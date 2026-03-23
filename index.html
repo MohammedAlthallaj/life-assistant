@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Life">
+<link rel="apple-touch-icon" href="icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -1049,11 +1050,13 @@ async function renderAnalytics(){
 
   // Stat cards
   const totalDays=checkins.filter(c=>c.mood).length;
-  const avgMood=totalDays?Math.round(10*checkins.filter(c=>c.mood).reduce((s,c)=>s+(c.mood||0),0)/totalDays)/10:0;
+  const MOOD_MAP={1:{e:'😞',l:'Rough'},2:{e:'😕',l:'Meh'},3:{e:'😐',l:'Okay'},4:{e:'😊',l:'Good'},5:{e:'😄',l:'Great'}};
+  const avgMood=totalDays?Math.round(checkins.filter(c=>c.mood).reduce((s,c)=>s+(c.mood||0),0)/totalDays):0;
+  const moodDisplay=avgMood?`${MOOD_MAP[Math.round(avgMood)]?.e||''}<div style="font-size:.8rem;font-weight:600;color:var(--text-m);margin-top:2px">${MOOD_MAP[Math.round(avgMood)]?.l||''}</div>`:'—';
   const allActive=allHabits.filter(h=>h.type!=='bad');
   el('analytics-stats').innerHTML=`
     <div class="stat-box"><div class="sv">${totalDays}</div><div class="sl">Days Tracked</div></div>
-    <div class="stat-box"><div class="sv">${avgMood||'—'}</div><div class="sl">Avg Mood (all time)</div></div>
+    <div class="stat-box"><div class="sv">${moodDisplay}</div><div class="sl">Avg Mood (all time)</div></div>
     <div class="stat-box"><div class="sv">${allActive.filter(h=>h.is_active).length}</div><div class="sl">Active Habits</div></div>
     <div class="stat-box"><div class="sv">${habits30.length?habits30[0].pct+'%':'—'}</div><div class="sl">Best Habit Rate</div></div>
   `;

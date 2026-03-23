@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2D6A4F"/>
+      <stop offset="100%" stop-color="#081C15"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#F3C96C"/>
+      <stop offset="100%" stop-color="#C9962B"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="110" fill="url(#bg)"/>
+
+  <!-- Big bold check — the core mark -->
+  <polyline 
+    points="110,265 210,370 400,155" 
+    stroke="url(#gold)" 
+    stroke-width="68" 
+    stroke-linecap="round" 
+    stroke-linejoin="round" 
+    fill="none"/>
+
+  <!-- Soft white glow behind the check -->
+  <polyline 
+    points="110,265 210,370 400,155" 
+    stroke="white" 
+    stroke-width="20" 
+    stroke-linecap="round" 
+    stroke-linejoin="round" 
+    fill="none"
+    opacity="0.08"/>
+</svg>
