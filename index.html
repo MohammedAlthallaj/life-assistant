@@ -1038,7 +1038,13 @@ async function renderAnalytics(){
     DB.getLast14Completion(),
     DB.getLast30HabitStats(),
     DB.getAllHabits(),
-    (async()=>{ const {data}=await sb.from('daily_checkins').select('date,mood'); return data||[]; })()
+    (async()=>{
+      const {data}=await sb.from('daily_checkins').select('date,mood').order('date');
+      // Deduplicate — keep latest entry per date (in case of old duplicate rows)
+      const byDate={};
+      (data||[]).forEach(r=>{ if(r.mood) byDate[r.date]=r; });
+      return Object.values(byDate);
+    })()
   ]);
 
   // Stat cards
