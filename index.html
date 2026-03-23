@@ -608,7 +608,24 @@ const DB = {
   async deleteHabit(id){ return sb.from('habits').delete().eq('id',id); },
 
   async getCheckin(date){ const {data}=await sb.from('daily_checkins').select('*').eq('date',date).maybeSingle(); return data; },
-  async upsertCheckin(date,obj){ return sb.from('daily_checkins').upsert({date,...obj,updated_at:new Date().toISOString()},{onConflict:'date'}); },
+  async upsertCheckin(date,obj){
+    // Merge into existing state so we never partial-overwrite other fields
+    const current = S.checkin || {};
+    const merged = {
+      date,
+      mood: current.mood || null,
+      journal: current.journal || null,
+      wird_completed: current.wird_completed || false,
+      quran_pages: current.quran_pages || 0,
+      current_surah: current.current_surah || null,
+      current_juz: current.current_juz || null,
+      ...obj,
+      updated_at: new Date().toISOString()
+    };
+    // Update state cache immediately
+    S.checkin = { ...current, ...obj, date };
+    return sb.from('daily_checkins').upsert(merged, {onConflict:'date', ignoreDuplicates:false});
+  },
 
   async getHabitLogs(date){ const {data}=await sb.from('habit_logs').select('*').eq('date',date); return data||[]; },
   async upsertHabitLog(habit_id,date,completed){ return sb.from('habit_logs').upsert({habit_id,date,completed},{onConflict:'habit_id,date'}); },
@@ -707,7 +724,7 @@ async function renderToday(){
     DB.getHabits('regular'),
     DB.getHabits('bad')
   ]);
-  S.checkin=checkin;
+  S.checkin = checkin || { date: S.today, mood: null, journal: null, wird_completed: false, quran_pages: 0, current_surah: null, current_juz: null };
   S.habits.islamic=islamicH.filter(h=>h.is_active);
   S.habits.regular=regularH.filter(h=>h.is_active);
   S.habits.bad=badH.filter(h=>h.is_active);
@@ -1227,7 +1244,10 @@ const App = {
   // ── Today ──
   async setMood(m){
     document.querySelectorAll('.mood-btn').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.mood)===m));
+    el('journal-save-status').textContent='Saving…';
     await DB.upsertCheckin(S.today,{mood:m});
+    el('journal-save-status').textContent='Saved ✓';
+    setTimeout(()=>el('journal-save-status').textContent='',1800);
   },
 
   async toggleHabit(habitId,listId){
