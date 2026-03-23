@@ -1078,7 +1078,8 @@ function openModal(title,bodyHTML,actions=[]){
   el('modal-overlay').classList.add('open');
 }
 function closeModal(e){
-  if(!e||e.target===el('modal-overlay')) el('modal-overlay').classList.remove('open');
+  // Close if: called programmatically (no event / no target), OR user clicked the backdrop
+  if(!e||!e.target||e.target===el('modal-overlay')) el('modal-overlay').classList.remove('open');
 }
 
 // ─── APP OBJECT (public API bound to DOM events) ──────────────
