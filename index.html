@@ -507,7 +507,7 @@ section.view.active{display:block}
 <button class="fab hidden" id="fab" onclick="App.fabAction()">+</button>
 
 <!-- Modal -->
-<div class="modal-overlay" id="modal-overlay" onclick="App.closeModal(event)">
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
   <div class="modal-box" id="modal-box">
     <div class="modal-handle"></div>
     <div class="modal-title" id="modal-title"></div>
@@ -1077,9 +1077,8 @@ function openModal(title,bodyHTML,actions=[]){
   el('modal-actions').innerHTML=actions.map(a=>`<button class="btn ${a.cls||'btn-secondary'}" onclick="${a.fn}">${a.label}</button>`).join('');
   el('modal-overlay').classList.add('open');
 }
-function closeModal(e){
-  // Close if: called programmatically (no event / no target), OR user clicked the backdrop
-  if(!e||!e.target||e.target===el('modal-overlay')) el('modal-overlay').classList.remove('open');
+function closeModal(){
+  el('modal-overlay').classList.remove('open');
 }
 
 // ─── APP OBJECT (public API bound to DOM events) ──────────────
@@ -1223,7 +1222,7 @@ const App = {
     if(!confirmed) return;
     await DB.logSlip(habitId,S.today,'');
     toast('Slip logged — keep going 💪');
-    renderBadHabits(S.habits.bad,S.today);
+    await renderBadHabits(S.habits.bad,S.today);
   },
 
   // ── Books ──
@@ -1234,7 +1233,7 @@ const App = {
       <div class="field"><label>Total Pages</label><input id="m-totalpages" type="number" placeholder="300" min="1"></div>
       <div class="field"><label>Current Page</label><input id="m-curpage" type="number" placeholder="0" min="0"></div>
     `,[
-      {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal(event)'},
+      {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal()'},
       {label:'Add Book',cls:'btn-primary',fn:'App.saveNewBook()'}
     ]);
   },
@@ -1255,7 +1254,7 @@ const App = {
       <div class="field"><label>Total Pages</label><input id="m-tp" type="number" value="${b.total_pages}" min="1"></div>
       <div class="field"><label>Notes</label><textarea id="m-notes" rows="3" placeholder="Personal notes...">${b.personal_notes||''}</textarea></div>
     `,[
-      {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal(event)'},
+      {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal()'},
       {label:'Save',cls:'btn-primary',fn:`App.saveBook('${id}')`}
     ]);
   },
@@ -1271,7 +1270,7 @@ const App = {
     openModal('Log Reading Session',`
       <div class="field"><label>Pages Read Today</label><input id="m-pr" type="number" placeholder="0" min="0"></div>
     `,[
-      {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal(event)'},
+      {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal()'},
       {label:'Log',cls:'btn-primary',fn:`App.saveReadingLog('${id}')`}
     ]);
   },
@@ -1330,7 +1329,7 @@ const App = {
     openModal('Daily Wird Target',`
       <div class="field"><label>Wird Target (count)</label><input id="m-wird" type="number" value="${cur}" min="1"></div>
     `,[
-      {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal(event)'},
+      {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal()'},
       {label:'Save',cls:'btn-primary',fn:'App.saveWirdTarget()'}
     ]);
   },
@@ -1349,7 +1348,7 @@ const App = {
       <div class="field"><label>Content</label><textarea id="m-nc" rows="4" placeholder="Write your note..."></textarea></div>
       <div class="field"><label>Reminder Date (optional)</label><input type="datetime-local" id="m-rd"></div>
     `,[
-      {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal(event)'},
+      {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal()'},
       {label:'Save Note',cls:'btn-primary',fn:'App.saveNote()'}
     ]);
   },
@@ -1387,7 +1386,7 @@ const App = {
         </select>
       </div>
     `,[
-      {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal(event)'},
+      {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal()'},
       {label:'Save Idea',cls:'btn-primary',fn:'App.saveIdea()'}
     ]);
   },
@@ -1416,7 +1415,7 @@ const App = {
       <div class="field"><label>Title</label><input id="m-lt" type="text" placeholder="Page title"></div>
       <div class="field"><label>Notes</label><input id="m-ln" type="text" placeholder="Why you saved it..."></div>
     `,[
-      {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal(event)'},
+      {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal()'},
       {label:'Save Link',cls:'btn-primary',fn:'App.saveLink()'}
     ]);
   },
@@ -1462,7 +1461,7 @@ const App = {
     openModal('Delete Habit',`
       <p>Delete <strong>${name}</strong> permanently? This cannot be undone and all history will be removed.</p>
     `,[
-      {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal(event)'},
+      {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal()'},
       {label:'Delete',cls:'btn-danger',fn:`App.doDeleteHabit('${id}','${type}')`}
     ]);
   },
@@ -1526,13 +1525,13 @@ const App = {
   },
 
   // ── Utility ──
-  closeModal(event){ closeModal(event); },
+  closeModal(){ closeModal(); },
 
   confirm(msg){
     return new Promise(res=>{
       openModal('Confirm',`<p style="font-size:.92rem;line-height:1.6">${msg}</p>`,[
-        {label:'Cancel',cls:'btn-secondary',fn:`(()=>{App.closeModal({});App._confirmRes(false)})()`},
-        {label:'Confirm',cls:'btn-danger',fn:`(()=>{App.closeModal({});App._confirmRes(true)})()`}
+        {label:'Cancel',cls:'btn-secondary',fn:`(()=>{App.closeModal();App._confirmRes(false)})()`},
+        {label:'Confirm',cls:'btn-danger',fn:`(()=>{App.closeModal();App._confirmRes(true)})()`}
       ]);
       App._confirmRes=res;
     });
@@ -1551,11 +1550,7 @@ document.getElementById('journal-area').addEventListener('input',e=>journalSave(
 
 // ─── PIN AUTO-SUBMIT ──────────────────────────────────────────
 // Auto-checks when PIN reaches expected length
-const _origPinKey=App.pinKey.bind(App);
-App.pinKey=function(k){
-  _origPinKey(k);
-  if(S.pinBuffer.length>=4) this.checkPIN();
-};
+// PIN auto-submits at 4 digits (handled inside pinKey already)
 
 // ─── SERVICE WORKER ───────────────────────────────────────────
 if('serviceWorker' in navigator){
