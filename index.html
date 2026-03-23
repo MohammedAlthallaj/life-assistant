@@ -448,6 +448,12 @@ section.view.active{display:block}
           <button class="btn btn-primary btn-sm" onclick="App.addHabit('bad')">Add</button>
         </div>
 
+        <h3>🔔 Notifications</h3>
+        <div class="card" style="margin:0 0 10px">
+          <div id="notif-status" style="font-size:.85rem;margin-bottom:12px"></div>
+          <button class="btn btn-primary btn-sm" onclick="App.requestNotifications()">Enable Notifications</button>
+        </div>
+
         <h3>🔒 Change PIN</h3>
         <div class="card" style="margin:0 0 10px">
           <div class="field"><label>New PIN</label><input id="new-pin" type="number" placeholder="4–6 digits"></div>
@@ -1031,7 +1037,25 @@ async function renderAnalytics(){
     </div>`).join('');
 }
 
-// ─── RENDER: SETTINGS ────────────────────────────────────────
+function renderNotifStatus(){
+  const s = el('notif-status');
+  if(!s) return;
+  if(!('Notification' in window)){
+    s.innerHTML = '❌ Not supported in this browser';
+    return;
+  }
+  const p = Notification.permission;
+  const hasPeriodic = 'periodicSync' in (swReg || {});
+  if(p === 'granted'){
+    s.innerHTML = `✅ <strong>Enabled</strong> — reminders will fire when due${hasPeriodic ? ' (background sync active)' : ' (when app is open or foregrounded)'}`;
+  } else if(p === 'denied'){
+    s.innerHTML = `❌ <strong>Blocked</strong> — go to your browser/phone settings and allow notifications for this site, then tap Enable below`;
+  } else {
+    s.innerHTML = `⚠️ <strong>Not yet enabled</strong> — tap the button below to allow reminders`;
+  }
+}
+
+
 async function renderSettings(){
   el('header-title').textContent='Settings';
   el('header-sub').textContent='Manage & Configure';
@@ -1054,6 +1078,7 @@ async function renderSettings(){
   renderHabitManager('mgr-islamic',islamicAll,'islamic');
   renderHabitManager('mgr-regular',regularAll,'regular');
   renderHabitManager('mgr-bad',badAll,'bad');
+  renderNotifStatus();
 }
 
 function renderHabitManager(containerId,habits,type){
@@ -1144,6 +1169,7 @@ const App = {
       el('setup-screen').classList.add('hidden');
       el('app').classList.remove('hidden');
       await renderToday();
+      setupNotifications();
       toast('Welcome! Setup complete ✓');
     }catch(e){
       el('setup-error').textContent='Connection failed. Check URL and key.';
@@ -1169,6 +1195,7 @@ const App = {
       el('pin-screen').classList.add('hidden');
       el('app').classList.remove('hidden');
       await renderToday();
+      setupNotifications(); // request permission + check due reminders
     } else {
       el('pin-error').textContent='Incorrect PIN';
       S.pinBuffer='';
@@ -1524,7 +1551,20 @@ const App = {
     toast('CSV exported ✓');
   },
 
-  // ── Utility ──
+  async requestNotifications(){
+    if(!('Notification' in window)){
+      toast('Notifications not supported in this browser');
+      return;
+    }
+    const result = await Notification.requestPermission();
+    if(result === 'granted'){
+      await setupNotifications();
+      toast('Notifications enabled ✓');
+    } else {
+      toast('Permission denied — enable in browser settings');
+    }
+    renderNotifStatus();
+  },
   closeModal(){ closeModal(); },
 
   confirm(msg){
@@ -1553,9 +1593,95 @@ document.getElementById('journal-area').addEventListener('input',e=>journalSave(
 // PIN auto-submits at 4 digits (handled inside pinKey already)
 
 // ─── SERVICE WORKER ───────────────────────────────────────────
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js').catch(()=>{});
+// ─── SERVICE WORKER + NOTIFICATIONS ──────────────────────────
+let swReg = null;
+
+async function initSW() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    swReg = await navigator.serviceWorker.register('sw.js');
+    // Send Supabase credentials to SW so it can query reminders in background
+    sendCredentialsToSW();
+  } catch(e) { console.warn('SW registration failed', e); }
 }
+
+function sendCredentialsToSW() {
+  if (!swReg || !CFG.url || !CFG.key) return;
+  const target = swReg.active || swReg.installing || swReg.waiting;
+  if (target) {
+    target.postMessage({ type: 'SB_CREDS', url: CFG.url, key: CFG.key });
+  }
+}
+
+async function requestNotificationPermission() {
+  if (!('Notification' in window)) return false;
+  if (Notification.permission === 'granted') return true;
+  if (Notification.permission === 'denied') return false;
+  const result = await Notification.requestPermission();
+  return result === 'granted';
+}
+
+async function registerPeriodicSync() {
+  if (!swReg) return;
+  try {
+    const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
+    if (status.state === 'granted') {
+      await swReg.periodicSync.register('check-reminders', {
+        minInterval: 15 * 60 * 1000 // every 15 minutes
+      });
+    }
+  } catch(e) {
+    // periodicSync not supported — silent fallback to in-app check
+  }
+}
+
+async function checkDueRemindersNow() {
+  // In-app check: fires every time app is opened / brought to foreground
+  if (Notification.permission !== 'granted') return;
+  if (!sb) return;
+  const now = new Date().toISOString();
+  try {
+    const { data: due } = await sb
+      .from('notes')
+      .select('id,content,reminder_date')
+      .eq('is_reminder', true)
+      .eq('completed', false)
+      .lte('reminder_date', now);
+    if (!due || !due.length) return;
+    for (const note of due) {
+      const reg = swReg || await navigator.serviceWorker.ready;
+      await reg.showNotification('⏰ Reminder', {
+        body: note.content,
+        icon: '/icon-192.png',
+        badge: '/icon-192.png',
+        tag: `reminder-${note.id}`,
+        renotify: false,
+        data: { noteId: note.id },
+        actions: [
+          { action: 'done', title: '✅ Mark Done' },
+          { action: 'dismiss', title: 'Dismiss' }
+        ]
+      });
+    }
+  } catch(e) { console.warn('Reminder check failed', e); }
+}
+
+async function setupNotifications() {
+  const granted = await requestNotificationPermission();
+  if (!granted) return;
+  sendCredentialsToSW();
+  await registerPeriodicSync();
+  await checkDueRemindersNow();
+}
+
+// Re-check when app comes back to foreground
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && sessionStorage.getItem('auth') === '1') {
+    checkDueRemindersNow();
+  }
+});
+
+initSW();
 
 // ─── INIT ─────────────────────────────────────────────────────
 (async function init(){
@@ -1567,6 +1693,7 @@ if('serviceWorker' in navigator){
   if(sessionStorage.getItem('auth')==='1'){
     el('app').classList.remove('hidden');
     await renderToday();
+    setupNotifications();
   } else {
     el('pin-screen').classList.remove('hidden');
     // Detect PIN length from hash presence
