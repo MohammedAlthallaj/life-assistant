@@ -95,6 +95,8 @@ section.view.active{display:block}
 
 /* ─── TODAY VIEW ─────────────────────────────────────── */
 .date-header{padding:16px 16px 0;display:flex;flex-direction:column;gap:4px}
+.date-day{font-family:var(--font-head);font-size:1.8rem;font-weight:600;line-height:1;text-align:center}
+.date-full{font-size:.8rem;color:var(--text-m);margin-top:4px;text-align:center}
 .date-header-past .mood-btn,.date-header-past .journal-area,.date-header-past .habit-check{pointer-events:none;opacity:.65}
 .date-day{font-family:var(--font-head);font-size:1.8rem;font-weight:600;line-height:1}
 .date-full{font-size:.8rem;color:var(--text-m);margin-top:4px}
@@ -333,13 +335,17 @@ section.view.active{display:block}
     <!-- ─── TODAY ───────────────────────────────────── -->
     <section id="view-today" class="view active">
       <div class="date-header">
-        <div style="display:flex;align-items:center;gap:10px">
-          <button onclick="App.stepDay(-1)" style="width:34px;height:34px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0">‹</button>
-          <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:12px;padding:4px 0">
+          <button onclick="App.stepDay(-1)" style="width:38px;height:38px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.15)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div style="flex:1;min-width:0;text-align:center">
             <div class="date-day" id="today-dayname"></div>
             <div class="date-full" id="today-fulldate"></div>
           </div>
-          <button id="day-fwd-btn" onclick="App.stepDay(1)" style="width:34px;height:34px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;opacity:.3" disabled>›</button>
+          <button id="day-fwd-btn" onclick="App.stepDay(1)" style="width:38px;height:38px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.15);opacity:.3" disabled>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
         </div>
         <div id="past-day-banner" class="hidden" style="margin-top:8px;background:var(--accent-l);border-radius:8px;padding:7px 12px;font-size:.78rem;color:var(--accent);font-weight:600;display:flex;align-items:center;justify-content:space-between">
           <span>👁 Viewing past day — read only</span>
