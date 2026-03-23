@@ -602,7 +602,7 @@ const DB = {
   async deleteHabit(id){ return sb.from('habits').delete().eq('id',id); },
 
   async getCheckin(date){ const {data}=await sb.from('daily_checkins').select('*').eq('date',date).maybeSingle(); return data; },
-  async upsertCheckin(date,obj){ return sb.from('daily_checkins').upsert({date,...obj,updated_at:new Date().toISOString()}); },
+  async upsertCheckin(date,obj){ return sb.from('daily_checkins').upsert({date,...obj,updated_at:new Date().toISOString()},{onConflict:'date'}); },
 
   async getHabitLogs(date){ const {data}=await sb.from('habit_logs').select('*').eq('date',date); return data||[]; },
   async upsertHabitLog(habit_id,date,completed){ return sb.from('habit_logs').upsert({habit_id,date,completed},{onConflict:'habit_id,date'}); },
