@@ -1,0 +1,1583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Life Assistant</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1B4332">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Life">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F6F3EE;--surface:#FFFFFF;--surface2:#F0EDE6;
+  --primary:#1B4332;--primary-m:#2D6A4F;--primary-l:#52B788;
+  --accent:#C9962B;--accent-l:#F3C96C;
+  --text:#1A1714;--text-m:#5C564E;--text-l:#9B938A;
+  --border:#E2DACE;--border-l:#EDE9E1;
+  --danger:#C0392B;--danger-l:#FADBD8;
+  --success:#1B4332;--success-l:#D8F3DC;
+  --mood1:#E57373;--mood2:#FFB74D;--mood3:#FFD54F;--mood4:#81C784;--mood5:#43A047;
+  --r:14px;--r-sm:8px;--shadow:0 2px 12px rgba(0,0,0,.07);--shadow-lg:0 8px 32px rgba(0,0,0,.13);
+  --font-body:'Sora',sans-serif;--font-head:'Lora',serif;
+  --nav-h:68px;--header-h:60px;
+}
+html{font-size:16px;-webkit-text-size-adjust:100%}
+body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+input,textarea,select{font-family:inherit;outline:none}
+a{color:var(--primary-m);text-decoration:none}
+
+/* ─── SETUP & PIN SCREENS ─────────────────────────────── */
+.splash-screen{position:fixed;inset:0;background:var(--primary);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;padding:32px}
+.splash-screen.hidden{display:none}
+.splash-logo{font-family:var(--font-head);font-size:2.2rem;color:#fff;margin-bottom:8px;font-style:italic}
+.splash-sub{color:rgba(255,255,255,.6);font-size:.85rem;margin-bottom:48px}
+.splash-card{background:#fff;border-radius:20px;padding:28px 24px;width:100%;max-width:360px;box-shadow:var(--shadow-lg)}
+.splash-card h2{font-family:var(--font-head);font-size:1.25rem;color:var(--text);margin-bottom:6px}
+.splash-card p{font-size:.8rem;color:var(--text-m);margin-bottom:20px;line-height:1.5}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:.75rem;font-weight:600;color:var(--text-m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+.field input,.field textarea,.field select{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:.9rem;color:var(--text);background:var(--bg);transition:border-color .2s}
+.field input:focus,.field textarea:focus{border-color:var(--primary-m)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:12px 20px;border-radius:var(--r-sm);font-size:.9rem;font-weight:600;transition:all .18s;cursor:pointer}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-m)}
+.btn-secondary{background:var(--surface2);color:var(--text)}.btn-secondary:hover{background:var(--border)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-accent{background:var(--accent);color:#fff}
+.btn-sm{padding:8px 14px;font-size:.8rem}
+.btn-full{width:100%}
+.btn-icon{padding:9px;border-radius:var(--r-sm)}
+
+/* PIN pad */
+.pin-dots{display:flex;gap:14px;justify-content:center;margin:20px 0}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--primary-m);transition:background .15s}
+.pin-dot.filled{background:var(--primary-m)}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:4px}
+.pin-key{padding:16px;font-size:1.3rem;font-weight:500;border-radius:12px;background:var(--surface2);color:var(--text);text-align:center;transition:all .12s;-webkit-tap-highlight-color:transparent}
+.pin-key:active{background:var(--primary);color:#fff;transform:scale(.95)}
+.pin-error{color:var(--danger);font-size:.82rem;text-align:center;min-height:20px;margin-top:4px}
+
+/* ─── APP SHELL ───────────────────────────────────────── */
+#app{display:flex;flex-direction:column;min-height:100dvh}
+.app-header{position:sticky;top:0;z-index:100;height:var(--header-h);background:var(--surface);border-bottom:1px solid var(--border-l);display:flex;align-items:center;padding:0 16px;gap:12px}
+.app-header h1{font-family:var(--font-head);font-size:1.15rem;font-weight:600;flex:1}
+.app-header .hdr-sub{font-size:.75rem;color:var(--text-l);font-family:var(--font-body);font-weight:400}
+.header-actions{display:flex;gap:6px}
+#main-content{flex:1;overflow-y:auto;padding-bottom:calc(var(--nav-h) + 16px);scroll-behavior:smooth}
+section.view{display:none;animation:fadeIn .2s ease}
+section.view.active{display:block}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ─── BOTTOM NAV ──────────────────────────────────────── */
+#bottom-nav{position:fixed;bottom:0;left:0;right:0;height:var(--nav-h);background:var(--surface);border-top:1px solid var(--border-l);display:flex;align-items:stretch;z-index:100;padding-bottom:env(safe-area-inset-bottom)}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;-webkit-tap-highlight-color:transparent;color:var(--text-l);transition:color .15s;font-size:.65rem;font-weight:500;letter-spacing:.02em}
+.nav-item svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav-item.active{color:var(--primary-m)}
+.nav-item.active svg{stroke:var(--primary-m)}
+
+/* ─── CARDS / COMMON ─────────────────────────────────── */
+.card{background:var(--surface);border-radius:var(--r);padding:18px;margin:12px 16px 0;box-shadow:var(--shadow)}
+.card-title{font-family:var(--font-head);font-size:1rem;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.card-title .badge{font-family:var(--font-body);font-size:.7rem;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--success-l);color:var(--success)}
+.section-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-l);padding:18px 16px 8px}
+.divider{height:1px;background:var(--border-l);margin:12px 0}
+.empty-state{text-align:center;padding:32px 16px;color:var(--text-l)}
+.empty-state svg{width:44px;height:44px;stroke:var(--border);margin-bottom:10px}
+.empty-state p{font-size:.85rem}
+
+/* ─── TODAY VIEW ─────────────────────────────────────── */
+.date-header{padding:16px 16px 0;display:flex;flex-direction:column}
+.date-day{font-family:var(--font-head);font-size:1.8rem;font-weight:600;line-height:1}
+.date-full{font-size:.8rem;color:var(--text-m);margin-top:4px}
+.completion-ring{display:flex;align-items:center;gap:14px;margin-top:10px}
+.ring-wrap{position:relative;width:56px;height:56px}
+.ring-svg{transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:var(--border);stroke-width:5}
+.ring-prog{fill:none;stroke:var(--primary-l);stroke-width:5;stroke-linecap:round;transition:stroke-dashoffset .4s ease}
+.ring-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:var(--primary)}
+.ring-label{font-size:.8rem;color:var(--text-m)}
+.ring-label strong{display:block;color:var(--text);font-size:1rem}
+
+/* Mood */
+.mood-picker{display:flex;gap:8px;justify-content:space-between}
+.mood-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border-radius:10px;background:var(--surface2);transition:all .15s;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.mood-btn span.emoji{font-size:1.5rem}
+.mood-btn span.label{font-size:.6rem;color:var(--text-l);font-weight:500}
+.mood-btn.selected{background:var(--primary-l)25;box-shadow:0 0 0 2px var(--primary-l)}
+
+/* Journal */
+.journal-area{width:100%;min-height:90px;padding:12px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:.88rem;line-height:1.6;resize:vertical;background:var(--bg);color:var(--text);transition:border-color .2s}
+.journal-area:focus{border-color:var(--primary-m)}
+
+/* Habit rows */
+.habit-group-title{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-l);padding:14px 16px 6px;display:flex;align-items:center;gap:6px}
+.habit-list{background:var(--surface);margin:0 16px;border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow)}
+.habit-row{display:flex;align-items:center;padding:13px 16px;border-bottom:1px solid var(--border-l);gap:14px;transition:background .12s;-webkit-tap-highlight-color:transparent}
+.habit-row:last-child{border-bottom:none}
+.habit-row.done{background:var(--success-l)50}
+.habit-check{width:24px;height:24px;border-radius:6px;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;cursor:pointer}
+.habit-check.checked{background:var(--primary);border-color:var(--primary)}
+.habit-check.checked svg{display:block}
+.habit-check svg{display:none;width:14px;height:14px;stroke:#fff;stroke-width:3}
+.habit-name{flex:1;font-size:.9rem}
+
+/* ─── BAD HABITS ────────────────────────────────────── */
+.bad-habit-card{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border-l);gap:12px}
+.bad-habit-card:last-child{border-bottom:none}
+.streak-badge{display:flex;flex-direction:column;align-items:center;justify-content:center;width:50px;height:50px;border-radius:12px;background:var(--success-l);flex-shrink:0}
+.streak-badge .num{font-size:1.3rem;font-weight:700;color:var(--success);line-height:1}
+.streak-badge .lbl{font-size:.55rem;color:var(--success);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.streak-badge.danger{background:var(--danger-l)}
+.streak-badge.danger .num,.streak-badge.danger .lbl{color:var(--danger)}
+.bad-habit-info{flex:1}
+.bad-habit-name{font-size:.9rem;font-weight:500}
+.bad-habit-meta{font-size:.72rem;color:var(--text-l);margin-top:2px}
+.slip-btn{font-size:.75rem;padding:7px 12px;border-radius:8px;background:var(--danger-l);color:var(--danger);font-weight:600;flex-shrink:0}
+.slip-btn:hover{background:var(--danger);color:#fff}
+
+/* ─── TRACKERS VIEW ──────────────────────────────────── */
+.tracker-tabs{display:flex;gap:0;margin:12px 16px 0;border-radius:var(--r-sm);overflow:hidden;background:var(--surface);box-shadow:var(--shadow)}
+.tracker-tab{flex:1;padding:11px;font-size:.82rem;font-weight:600;text-align:center;cursor:pointer;color:var(--text-l);transition:all .15s;border-bottom:2px solid transparent}
+.tracker-tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+
+/* Book card */
+.book-card{padding:16px}
+.book-header{display:flex;align-items:flex-start;gap:14px;margin-bottom:12px}
+.book-spine{width:42px;height:60px;background:var(--primary);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.4rem}
+.book-meta{flex:1}
+.book-title{font-family:var(--font-head);font-size:.95rem;font-weight:600;line-height:1.3}
+.book-author{font-size:.78rem;color:var(--text-l);margin-top:3px}
+.book-pages{font-size:.75rem;color:var(--text-m);margin-top:6px}
+.progress-bar-wrap{height:7px;background:var(--border);border-radius:4px;overflow:hidden;margin:8px 0}
+.progress-bar-fill{height:100%;background:var(--primary-l);border-radius:4px;transition:width .4s ease}
+.book-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+
+/* Quran tracker */
+.quran-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.quran-stat{background:var(--surface2);border-radius:10px;padding:14px;text-align:center}
+.quran-stat .val{font-size:1.6rem;font-weight:700;color:var(--primary);font-family:var(--font-head)}
+.quran-stat .lab{font-size:.7rem;color:var(--text-l);font-weight:500;margin-top:3px}
+.wird-row{display:flex;align-items:center;gap:14px;padding:14px 0;border-top:1px solid var(--border-l);margin-top:12px}
+.wird-check{width:32px;height:32px;border-radius:8px;border:2px solid var(--accent);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;flex-shrink:0}
+.wird-check.done{background:var(--accent);border-color:var(--accent)}
+.wird-check.done svg{display:block}
+.wird-check svg{display:none;width:18px;height:18px;stroke:#fff;stroke-width:3}
+
+/* ─── NOTES VIEW ────────────────────────────────────── */
+.notes-tabs{display:flex;background:var(--surface);border-radius:var(--r-sm);margin:12px 16px 0;box-shadow:var(--shadow);overflow:hidden}
+.notes-tab{flex:1;padding:11px 6px;font-size:.78rem;font-weight:600;text-align:center;cursor:pointer;color:var(--text-l);border-bottom:2px solid transparent;transition:all .15s}
+.notes-tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+.note-row{padding:13px 16px;border-bottom:1px solid var(--border-l);display:flex;align-items:flex-start;gap:10px}
+.note-row:last-child{border-bottom:none}
+.note-content{flex:1;font-size:.88rem;line-height:1.5}
+.note-meta{font-size:.7rem;color:var(--text-l);margin-top:4px}
+.note-reminder-badge{font-size:.68rem;padding:2px 7px;border-radius:20px;background:var(--accent-l);color:var(--accent);font-weight:600;margin-top:4px;display:inline-block}
+.idea-category{font-size:.68rem;padding:2px 8px;border-radius:20px;font-weight:600;background:var(--primary-l)20;color:var(--primary-m);display:inline-block;margin-bottom:4px}
+.link-url{font-size:.75rem;color:var(--primary-m);word-break:break-all}
+.del-btn{color:var(--text-l);padding:4px;border-radius:6px;opacity:.5;transition:opacity .15s;flex-shrink:0}
+.del-btn:hover{opacity:1;color:var(--danger)}
+.note-complete-btn{width:22px;height:22px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;cursor:pointer;transition:all .15s;display:flex;align-items:center;justify-content:center;margin-top:2px}
+.note-complete-btn.done{background:var(--success);border-color:var(--success)}
+.note-complete-btn.done svg{display:block}
+.note-complete-btn svg{display:none;width:12px;height:12px;stroke:#fff;stroke-width:3}
+.note-row.completed .note-content{text-decoration:line-through;opacity:.55}
+
+/* ─── ANALYTICS ──────────────────────────────────────── */
+.chart-card{background:var(--surface);border-radius:var(--r);padding:18px;margin:12px 16px 0;box-shadow:var(--shadow)}
+.chart-title{font-family:var(--font-head);font-size:.95rem;font-weight:600;margin-bottom:14px}
+.chart-container{position:relative;height:180px}
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:12px 16px 0}
+.stat-box{background:var(--surface);border-radius:var(--r);padding:16px;box-shadow:var(--shadow)}
+.stat-box .sv{font-size:1.8rem;font-weight:700;color:var(--primary);font-family:var(--font-head)}
+.stat-box .sl{font-size:.72rem;color:var(--text-l);margin-top:4px}
+.habit-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.habit-bar-name{font-size:.78rem;width:110px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.habit-bar-track{flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden}
+.habit-bar-fill{height:100%;background:var(--primary-l);border-radius:4px}
+.habit-bar-pct{font-size:.72rem;color:var(--text-l);width:32px;text-align:right;flex-shrink:0}
+
+/* ─── SETTINGS VIEW ──────────────────────────────────── */
+.settings-section{padding:0 16px}
+.settings-section h3{font-family:var(--font-head);font-size:1rem;margin:20px 0 10px}
+.habit-mgr-row{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--surface);border-radius:var(--r-sm);margin-bottom:6px;box-shadow:var(--shadow)}
+.habit-mgr-name{flex:1;font-size:.88rem}
+.toggle{position:relative;width:40px;height:22px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:var(--border);border-radius:11px;cursor:pointer;transition:.2s}
+.toggle-slider::before{content:'';position:absolute;width:18px;height:18px;left:2px;top:2px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle input:checked+.toggle-slider{background:var(--primary-l)}
+.toggle input:checked+.toggle-slider::before{transform:translateX(18px)}
+
+/* ─── MODAL ──────────────────────────────────────────── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal-box{background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:90dvh;overflow-y:auto;padding:8px 0 env(safe-area-inset-bottom);transform:translateY(20px);transition:transform .25s ease;box-shadow:var(--shadow-lg)}
+.modal-overlay.open .modal-box{transform:translateY(0)}
+.modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:10px auto 16px}
+.modal-title{font-family:var(--font-head);font-size:1.1rem;font-weight:600;padding:0 20px 16px}
+.modal-body{padding:0 20px 20px}
+.modal-actions{display:flex;gap:10px;padding:0 20px 20px}
+.modal-actions .btn{flex:1}
+
+/* ─── TOAST ──────────────────────────────────────────── */
+#toast{position:fixed;bottom:calc(var(--nav-h) + 12px);left:50%;transform:translateX(-50%) translateY(16px);background:var(--text);color:#fff;padding:10px 18px;border-radius:30px;font-size:.82rem;font-weight:500;opacity:0;transition:all .3s;z-index:900;white-space:nowrap;pointer-events:none}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ─── FAB ─────────────────────────────────────────────── */
+.fab{position:fixed;right:20px;bottom:calc(var(--nav-h) + 16px);width:52px;height:52px;border-radius:50%;background:var(--primary);color:#fff;font-size:1.5rem;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(27,67,50,.35);z-index:90;transition:all .2s;-webkit-tap-highlight-color:transparent}
+.fab:hover{background:var(--primary-m);transform:scale(1.05)}
+.fab.hidden{display:none}
+
+/* ─── UTILITIES ──────────────────────────────────────── */
+.hidden{display:none!important}
+.loading{opacity:.5;pointer-events:none}
+.text-danger{color:var(--danger)}
+.text-success{color:var(--success)}
+.text-muted{color:var(--text-l)}
+.fw-6{font-weight:600}
+.mt-8{margin-top:8px}
+.mt-16{margin-top:16px}
+.flex{display:flex;align-items:center}
+.gap-8{gap:8px}
+.justify-between{justify-content:space-between}
+.add-row{display:flex;gap:8px;margin-top:10px}
+.add-row input{flex:1;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:.88rem;background:var(--bg)}
+
+@media(min-width:480px){
+  .modal-overlay{align-items:center}
+  .modal-box{border-radius:20px;max-height:85dvh}
+  .modal-handle{display:none}
+}
+@media(prefers-color-scheme:dark){
+  /* Dark mode could be added here in Phase 2 */
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════
+  SETUP SCREEN (first run — enter Supabase credentials)
+═══════════════════════════════════════════════════ -->
+<div id="setup-screen" class="splash-screen hidden">
+  <div class="splash-logo">Life Assistant</div>
+  <div class="splash-sub">Let's connect your database</div>
+  <div class="splash-card">
+    <h2>Supabase Setup</h2>
+    <p>You only need to do this once. Find these values in your Supabase project → Settings → API.</p>
+    <div class="field"><label>Project URL</label><input id="setup-url" placeholder="https://xxxx.supabase.co" type="url"></div>
+    <div class="field"><label>Anon / Public Key</label><input id="setup-key" placeholder="eyJ..." type="text"></div>
+    <div class="field"><label>Choose Your PIN</label><input id="setup-pin" placeholder="4–6 digits" type="number" maxlength="6"></div>
+    <div id="setup-error" class="pin-error"></div>
+    <button class="btn btn-primary btn-full mt-16" onclick="App.saveSetup()">Connect & Continue</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+  PIN SCREEN
+═══════════════════════════════════════════════════ -->
+<div id="pin-screen" class="splash-screen hidden">
+  <div class="splash-logo">Life Assistant</div>
+  <div class="splash-sub">بسم الله الرحمن الرحيم</div>
+  <div class="splash-card">
+    <h2 style="text-align:center;margin-bottom:6px">Enter PIN</h2>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-pad">
+      <button class="pin-key" onclick="App.pinKey('1')">1</button>
+      <button class="pin-key" onclick="App.pinKey('2')">2</button>
+      <button class="pin-key" onclick="App.pinKey('3')">3</button>
+      <button class="pin-key" onclick="App.pinKey('4')">4</button>
+      <button class="pin-key" onclick="App.pinKey('5')">5</button>
+      <button class="pin-key" onclick="App.pinKey('6')">6</button>
+      <button class="pin-key" onclick="App.pinKey('7')">7</button>
+      <button class="pin-key" onclick="App.pinKey('8')">8</button>
+      <button class="pin-key" onclick="App.pinKey('9')">9</button>
+      <button class="pin-key" onclick="App.pinKey('clear')" style="font-size:.85rem;color:var(--text-l)">CLR</button>
+      <button class="pin-key" onclick="App.pinKey('0')">0</button>
+      <button class="pin-key" onclick="App.pinKey('back')" style="font-size:1.5rem">⌫</button>
+    </div>
+    <div class="pin-error" id="pin-error"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+  MAIN APP
+═══════════════════════════════════════════════════ -->
+<div id="app" class="hidden">
+
+  <!-- Header -->
+  <header class="app-header" id="app-header">
+    <div style="flex:1">
+      <h1 id="header-title">Today</h1>
+      <div class="hdr-sub" id="header-sub"></div>
+    </div>
+    <div class="header-actions" id="header-actions"></div>
+  </header>
+
+  <!-- Main Content -->
+  <main id="main-content">
+
+    <!-- ─── TODAY ───────────────────────────────────── -->
+    <section id="view-today" class="view active">
+      <div class="date-header">
+        <div class="date-day" id="today-dayname"></div>
+        <div class="date-full" id="today-fulldate"></div>
+        <div class="completion-ring" id="completion-ring">
+          <div class="ring-wrap">
+            <svg class="ring-svg" viewBox="0 0 56 56" width="56" height="56">
+              <circle class="ring-bg" cx="28" cy="28" r="24"/>
+              <circle class="ring-prog" id="ring-prog" cx="28" cy="28" r="24" stroke-dasharray="150.8" stroke-dashoffset="150.8"/>
+            </svg>
+            <div class="ring-text" id="ring-pct">0%</div>
+          </div>
+          <div class="ring-label">
+            <strong id="ring-count">0 / 0</strong>
+            Habits completed
+          </div>
+        </div>
+      </div>
+
+      <!-- Mood -->
+      <div class="card">
+        <div class="card-title">✨ How are you feeling?</div>
+        <div class="mood-picker" id="mood-picker">
+          <div class="mood-btn" data-mood="1" onclick="App.setMood(1)"><span class="emoji">😞</span><span class="label">Rough</span></div>
+          <div class="mood-btn" data-mood="2" onclick="App.setMood(2)"><span class="emoji">😕</span><span class="label">Meh</span></div>
+          <div class="mood-btn" data-mood="3" onclick="App.setMood(3)"><span class="emoji">😐</span><span class="label">Okay</span></div>
+          <div class="mood-btn" data-mood="4" onclick="App.setMood(4)"><span class="emoji">😊</span><span class="label">Good</span></div>
+          <div class="mood-btn" data-mood="5" onclick="App.setMood(5)"><span class="emoji">😄</span><span class="label">Great</span></div>
+        </div>
+      </div>
+
+      <!-- Journal -->
+      <div class="card">
+        <div class="card-title">📝 Daily Journal</div>
+        <textarea class="journal-area" id="journal-area" placeholder="What's on your mind today?" rows="3"></textarea>
+        <div class="text-muted" style="font-size:.7rem;margin-top:6px;text-align:right" id="journal-save-status"></div>
+      </div>
+
+      <!-- Islamic Habits -->
+      <div class="habit-group-title">
+        <span>🌙</span> Islamic Habits
+      </div>
+      <div class="habit-list" id="islamic-habits-list"></div>
+
+      <!-- Regular Habits -->
+      <div class="habit-group-title">
+        <span>⚡</span> Regular Habits
+      </div>
+      <div class="habit-list" id="regular-habits-list"></div>
+
+      <!-- Bad Habits -->
+      <div class="habit-group-title">
+        <span>🛡️</span> Bad Habits Tracker
+      </div>
+      <div class="habit-list" id="bad-habits-list" style="padding:0"></div>
+    </section>
+
+    <!-- ─── TRACKERS ─────────────────────────────── -->
+    <section id="view-trackers" class="view">
+      <div class="tracker-tabs">
+        <div class="tracker-tab active" onclick="App.switchTracker('books',this)">📚 Books</div>
+        <div class="tracker-tab" onclick="App.switchTracker('quran',this)">🕌 Quran & Wird</div>
+      </div>
+      <div id="tracker-books"></div>
+      <div id="tracker-quran" class="hidden"></div>
+    </section>
+
+    <!-- ─── NOTES ────────────────────────────────── -->
+    <section id="view-notes" class="view">
+      <div class="notes-tabs">
+        <div class="notes-tab active" onclick="App.switchNoteTab('notes',this)">📋 Notes</div>
+        <div class="notes-tab" onclick="App.switchNoteTab('ideas',this)">💡 Ideas</div>
+        <div class="notes-tab" onclick="App.switchNoteTab('links',this)">🔗 Links</div>
+      </div>
+      <div id="notes-content"></div>
+    </section>
+
+    <!-- ─── ANALYTICS ────────────────────────────── -->
+    <section id="view-analytics" class="view">
+      <div class="stat-grid" id="analytics-stats"></div>
+      <div class="chart-card">
+        <div class="chart-title">😊 Mood (Last 14 Days)</div>
+        <div class="chart-container"><canvas id="mood-chart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">✅ Habit Completion Rate (30 Days)</div>
+        <div id="habit-completion-bars"></div>
+      </div>
+      <div class="chart-card" style="margin-bottom:16px">
+        <div class="chart-title">📈 Daily Completion (Last 14 Days)</div>
+        <div class="chart-container"><canvas id="completion-chart"></canvas></div>
+      </div>
+    </section>
+
+    <!-- ─── SETTINGS ─────────────────────────────── -->
+    <section id="view-settings" class="view" style="padding-bottom:32px">
+      <div class="settings-section">
+
+        <h3>🌙 Islamic Habits</h3>
+        <div id="mgr-islamic"></div>
+        <div class="add-row">
+          <input id="new-islamic-name" placeholder="New Islamic habit name">
+          <button class="btn btn-primary btn-sm" onclick="App.addHabit('islamic')">Add</button>
+        </div>
+
+        <h3>⚡ Regular Habits</h3>
+        <div id="mgr-regular"></div>
+        <div class="add-row">
+          <input id="new-regular-name" placeholder="New Regular habit name">
+          <button class="btn btn-primary btn-sm" onclick="App.addHabit('regular')">Add</button>
+        </div>
+
+        <h3>🛡️ Bad Habits</h3>
+        <div id="mgr-bad"></div>
+        <div class="add-row">
+          <input id="new-bad-name" placeholder="New bad habit name">
+          <button class="btn btn-primary btn-sm" onclick="App.addHabit('bad')">Add</button>
+        </div>
+
+        <h3>🔒 Change PIN</h3>
+        <div class="card" style="margin:0 0 10px">
+          <div class="field"><label>New PIN</label><input id="new-pin" type="number" placeholder="4–6 digits"></div>
+          <div class="field"><label>Confirm PIN</label><input id="confirm-pin" type="number" placeholder="Repeat PIN"></div>
+          <button class="btn btn-primary btn-sm mt-8" onclick="App.changePIN()">Update PIN</button>
+        </div>
+
+        <h3>📊 Google Sheets Sync</h3>
+        <div class="card" style="margin:0 0 10px">
+          <div class="field"><label>Apps Script Webhook URL</label><input id="sheets-url" type="url" placeholder="https://script.google.com/macros/s/..."></div>
+          <button class="btn btn-primary btn-sm mt-8" onclick="App.saveSheets()">Save Webhook</button>
+          <button class="btn btn-secondary btn-sm mt-8" onclick="App.syncSheets()" style="margin-left:8px">Sync Now</button>
+        </div>
+
+        <h3>💾 Export Data</h3>
+        <div class="card" style="margin:0;display:flex;gap:10px">
+          <button class="btn btn-secondary btn-sm" onclick="App.exportJSON()">⬇ JSON</button>
+          <button class="btn btn-secondary btn-sm" onclick="App.exportCSV()">⬇ CSV</button>
+        </div>
+
+        <div style="text-align:center;margin-top:32px;color:var(--text-l);font-size:.75rem">
+          Life Assistant v1.0 — Phase 1<br>
+          <button onclick="App.logout()" style="color:var(--danger);font-size:.78rem;margin-top:8px">Sign Out</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Bottom Nav -->
+  <nav id="bottom-nav">
+    <div class="nav-item active" data-view="today" onclick="App.nav('today',this)">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Today
+    </div>
+    <div class="nav-item" data-view="trackers" onclick="App.nav('trackers',this)">
+      <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      Trackers
+    </div>
+    <div class="nav-item" data-view="notes" onclick="App.nav('notes',this)">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      Notes
+    </div>
+    <div class="nav-item" data-view="analytics" onclick="App.nav('analytics',this)">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Analytics
+    </div>
+    <div class="nav-item" data-view="settings" onclick="App.nav('settings',this)">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
+      Settings
+    </div>
+  </nav>
+
+</div><!-- /app -->
+
+<!-- FAB -->
+<button class="fab hidden" id="fab" onclick="App.fabAction()">+</button>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="App.closeModal(event)">
+  <div class="modal-box" id="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-actions" id="modal-actions"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- ═══════════════════════════════════════════════════
+  JAVASCRIPT
+═══════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+// ─── CONFIG ───────────────────────────────────────────────────
+const CFG = {
+  get url(){return localStorage.getItem('sb_url')||''},
+  get key(){return localStorage.getItem('sb_key')||''},
+  get pinHash(){return localStorage.getItem('pin_hash')||''},
+  set url(v){localStorage.setItem('sb_url',v)},
+  set key(v){localStorage.setItem('sb_key',v)},
+  set pinHash(v){localStorage.setItem('pin_hash',v)},
+  isConfigured(){return !!(this.url && this.key && this.pinHash)}
+};
+
+// ─── SUPABASE CLIENT ──────────────────────────────────────────
+let sb = null;
+function initSB(){
+  if(!CFG.url||!CFG.key)return;
+  sb = supabase.createClient(CFG.url, CFG.key);
+}
+
+// ─── STATE ────────────────────────────────────────────────────
+const S = {
+  today: new Date().toISOString().split('T')[0],
+  view: 'today',
+  trackerTab: 'books',
+  noteTab: 'notes',
+  habits: {islamic:[],regular:[],bad:[]},
+  checkin: null,
+  habitLogs: {},
+  badSlipDates: {},
+  badStreaks: {},
+  books: [],
+  quranToday: null,
+  notes: [],
+  ideas: [],
+  links: [],
+  settings: {},
+  moodChart: null,
+  completionChart: null,
+  pinBuffer: '',
+  pinLen: 4
+};
+
+// ─── UTILITIES ────────────────────────────────────────────────
+async function sha256(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function toast(msg, dur=2200){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),dur);
+}
+function fmtDate(d){
+  const dt=new Date(d+'T00:00:00');
+  return dt.toLocaleDateString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+}
+function dayName(d){
+  return new Date(d+'T00:00:00').toLocaleDateString('en-GB',{weekday:'long'});
+}
+function fmtTs(ts){
+  return new Date(ts).toLocaleString('en-GB',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)};}
+function el(id){return document.getElementById(id);}
+function svgCheck(){return`<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`;}
+
+// ─── DATA LAYER ───────────────────────────────────────────────
+const DB = {
+  async getSetting(key){ const {data}=await sb.from('app_settings').select('value').eq('key',key).single(); return data?.value||null; },
+  async setSetting(key,val){ await sb.from('app_settings').upsert({key,value:String(val),updated_at:new Date().toISOString()}); },
+
+  async getHabits(type){ const {data}=await sb.from('habits').select('*').eq('type',type).order('sort_order'); return data||[]; },
+  async getAllHabits(){ const {data}=await sb.from('habits').select('*').order('sort_order'); return data||[]; },
+  async addHabit(name,type,sort_order){ return sb.from('habits').insert({name,type,sort_order,is_active:true}); },
+  async updateHabit(id,obj){ return sb.from('habits').update({...obj,updated_at:new Date().toISOString()}).eq('id',id); },
+  async deleteHabit(id){ return sb.from('habits').delete().eq('id',id); },
+
+  async getCheckin(date){ const {data}=await sb.from('daily_checkins').select('*').eq('date',date).maybeSingle(); return data; },
+  async upsertCheckin(date,obj){ return sb.from('daily_checkins').upsert({date,...obj,updated_at:new Date().toISOString()}); },
+
+  async getHabitLogs(date){ const {data}=await sb.from('habit_logs').select('*').eq('date',date); return data||[]; },
+  async upsertHabitLog(habit_id,date,completed){ return sb.from('habit_logs').upsert({habit_id,date,completed},{onConflict:'habit_id,date'}); },
+
+  async getSlipsForHabit(habit_id){ const {data}=await sb.from('bad_habit_slips').select('date').eq('habit_id',habit_id).order('date',{ascending:false}); return data||[]; },
+  async logSlip(habit_id,date,note=''){ return sb.from('bad_habit_slips').insert({habit_id,date,note}); },
+  async hadSlipOn(habit_id,date){ const {data}=await sb.from('bad_habit_slips').select('id').eq('habit_id',habit_id).eq('date',date); return !!(data&&data.length); },
+
+  async getBooks(){ const {data}=await sb.from('books').select('*').order('created_at',{ascending:false}); return data||[]; },
+  async addBook(obj){ return sb.from('books').insert(obj); },
+  async updateBook(id,obj){ return sb.from('books').update({...obj,updated_at:new Date().toISOString()}).eq('id',id); },
+  async deleteBook(id){ return sb.from('books').delete().eq('id',id); },
+  async addReadingLog(book_id,date,pages_read){ return sb.from('book_reading_logs').insert({book_id,date,pages_read}); },
+
+  async getQuranToday(date){ const {data}=await sb.from('daily_checkins').select('wird_completed,quran_pages,current_surah,current_juz').eq('date',date).maybeSingle(); return data; },
+  async getQuranTotal(){ const {data}=await sb.from('daily_checkins').select('quran_pages'); return (data||[]).reduce((s,r)=>s+(r.quran_pages||0),0); },
+
+  async getNotes(){ const {data}=await sb.from('notes').select('*').order('created_at',{ascending:false}); return data||[]; },
+  async addNote(obj){ return sb.from('notes').insert(obj); },
+  async updateNote(id,obj){ return sb.from('notes').update({...obj,updated_at:new Date().toISOString()}).eq('id',id); },
+  async deleteNote(id){ return sb.from('notes').delete().eq('id',id); },
+
+  async getIdeas(){ const {data}=await sb.from('ideas').select('*').order('created_at',{ascending:false}); return data||[]; },
+  async addIdea(obj){ return sb.from('ideas').insert(obj); },
+  async deleteIdea(id){ return sb.from('ideas').delete().eq('id',id); },
+
+  async getLinks(){ const {data}=await sb.from('links').select('*').order('created_at',{ascending:false}); return data||[]; },
+  async addLink(obj){ return sb.from('links').insert(obj); },
+  async deleteLink(id){ return sb.from('links').delete().eq('id',id); },
+
+  async getLast14Mood(){
+    const from=new Date(); from.setDate(from.getDate()-13);
+    const {data}=await sb.from('daily_checkins').select('date,mood').gte('date',from.toISOString().split('T')[0]).order('date');
+    return data||[];
+  },
+  async getLast14Completion(){
+    const from=new Date(); from.setDate(from.getDate()-13);
+    const {data}=await sb.from('habit_logs').select('date,completed').gte('date',from.toISOString().split('T')[0]);
+    return data||[];
+  },
+  async getLast30HabitStats(){
+    const from=new Date(); from.setDate(from.getDate()-29);
+    const {data:logs}=await sb.from('habit_logs').select('habit_id,completed').gte('date',from.toISOString().split('T')[0]);
+    const {data:habits}=await sb.from('habits').select('id,name').in('type',['islamic','regular']).eq('is_active',true);
+    const map={};
+    (habits||[]).forEach(h=>map[h.id]={name:h.name,done:0,total:0});
+    (logs||[]).forEach(l=>{if(map[l.habit_id]){map[l.habit_id].total++;if(l.completed)map[l.habit_id].done++;}});
+    return Object.values(map).map(h=>({...h,pct:h.total?Math.round(100*h.done/h.total):0})).sort((a,b)=>b.pct-a.pct);
+  },
+  async exportAll(){
+    const [checkins,habits,logs,slips,books,readLogs,notes,ideas,links]=await Promise.all([
+      sb.from('daily_checkins').select('*'),
+      sb.from('habits').select('*'),
+      sb.from('habit_logs').select('*'),
+      sb.from('bad_habit_slips').select('*'),
+      sb.from('books').select('*'),
+      sb.from('book_reading_logs').select('*'),
+      sb.from('notes').select('*'),
+      sb.from('ideas').select('*'),
+      sb.from('links').select('*')
+    ]);
+    return {checkins:checkins.data,habits:habits.data,habit_logs:logs.data,bad_habit_slips:slips.data,books:books.data,book_reading_logs:readLogs.data,notes:notes.data,ideas:ideas.data,links:links.data,exported_at:new Date().toISOString()};
+  }
+};
+
+// ─── STREAK CALCULATION ───────────────────────────────────────
+async function computeStreak(habit_id){
+  const slips=await DB.getSlipsForHabit(habit_id);
+  if(!slips.length) return Infinity; // No slips ever → ∞ (show days since habit created)
+  const slipSet=new Set(slips.map(s=>s.date));
+  let streak=0; const d=new Date();
+  while(true){
+    const ds=d.toISOString().split('T')[0];
+    if(slipSet.has(ds))break;
+    streak++; d.setDate(d.getDate()-1);
+    if(streak>9999)break;
+  }
+  return streak;
+}
+
+// ─── RENDER: TODAY ────────────────────────────────────────────
+async function renderToday(){
+  el('header-title').textContent='Today';
+  el('header-sub').textContent='Daily Check-in';
+  el('header-actions').innerHTML='';
+  el('fab').classList.add('hidden');
+
+  el('today-dayname').textContent=dayName(S.today);
+  el('today-fulldate').textContent=fmtDate(S.today);
+
+  // Load data in parallel
+  const [checkin,logs,islamicH,regularH,badH]=await Promise.all([
+    DB.getCheckin(S.today),
+    DB.getHabitLogs(S.today),
+    DB.getHabits('islamic'),
+    DB.getHabits('regular'),
+    DB.getHabits('bad')
+  ]);
+  S.checkin=checkin;
+  S.habits.islamic=islamicH.filter(h=>h.is_active);
+  S.habits.regular=regularH.filter(h=>h.is_active);
+  S.habits.bad=badH.filter(h=>h.is_active);
+  const logMap={};
+  logs.forEach(l=>logMap[l.habit_id]=l.completed);
+  S.habitLogs=logMap;
+
+  // Mood
+  if(checkin?.mood){
+    document.querySelectorAll('.mood-btn').forEach(b=>{
+      b.classList.toggle('selected',parseInt(b.dataset.mood)===checkin.mood);
+    });
+  }else{
+    document.querySelectorAll('.mood-btn').forEach(b=>b.classList.remove('selected'));
+  }
+
+  // Journal
+  el('journal-area').value=checkin?.journal||'';
+
+  // Habit lists
+  renderHabitList('islamic-habits-list',S.habits.islamic,logMap);
+  renderHabitList('regular-habits-list',S.habits.regular,logMap);
+  await renderBadHabits(S.habits.bad,S.today);
+  updateRing();
+}
+
+function renderHabitList(containerId,habits,logMap){
+  const c=el(containerId);
+  if(!habits.length){c.innerHTML='<div class="empty-state" style="padding:16px"><p>No active habits. Add some in Settings.</p></div>';return;}
+  c.innerHTML=habits.map(h=>{
+    const done=logMap[h.id]||false;
+    return`<div class="habit-row${done?' done':''}" id="hr-${h.id}">
+      <div class="habit-check${done?' checked':''}" onclick="App.toggleHabit('${h.id}','${containerId}')">
+        ${svgCheck()}
+      </div>
+      <div class="habit-name">${h.name}</div>
+    </div>`;
+  }).join('');
+}
+
+async function renderBadHabits(habits,date){
+  const c=el('bad-habits-list');
+  if(!habits.length){c.innerHTML='<div class="empty-state" style="padding:16px"><p>No bad habits tracked. Add some in Settings.</p></div>';return;}
+  const rows=await Promise.all(habits.map(async h=>{
+    const streak=await computeStreak(h.id);
+    const hadSlip=await DB.hadSlipOn(h.id,date);
+    S.badStreaks[h.id]=streak;
+    S.badSlipDates[h.id]=hadSlip;
+    const streakDisplay=streak===Infinity?'∞':streak;
+    const isDanger=streak<3&&streak!==Infinity;
+    return`<div class="bad-habit-card" id="bhc-${h.id}">
+      <div class="streak-badge${isDanger?' danger':''}">
+        <div class="num">${streakDisplay}</div>
+        <div class="lbl">days</div>
+      </div>
+      <div class="bad-habit-info">
+        <div class="bad-habit-name">${h.name}</div>
+        <div class="bad-habit-meta">${hadSlip?'⚠️ Slip logged today':'✅ Clean today'}</div>
+      </div>
+      ${hadSlip?`<span class="text-muted" style="font-size:.75rem">Logged</span>`:`<button class="slip-btn" onclick="App.logSlip('${h.id}')">Log Slip</button>`}
+    </div>`;
+  }));
+  c.innerHTML=rows.join('');
+}
+
+function updateRing(){
+  const all=[...S.habits.islamic,...S.habits.regular];
+  const total=all.length;
+  const done=all.filter(h=>S.habitLogs[h.id]).length;
+  const pct=total?Math.round(100*done/total):0;
+  const circ=150.8;
+  const offset=circ-(circ*pct/100);
+  el('ring-prog').style.strokeDashoffset=offset;
+  el('ring-pct').textContent=pct+'%';
+  el('ring-count').textContent=`${done} / ${total}`;
+}
+
+// ─── RENDER: TRACKERS ─────────────────────────────────────────
+async function renderTrackers(){
+  el('header-title').textContent='Trackers';
+  el('header-sub').textContent='Books & Quran';
+  el('header-actions').innerHTML='';
+  el('fab').classList.remove('hidden');
+  el('fab').dataset.action='add-book';
+
+  if(S.trackerTab==='books') await renderBooks();
+  else await renderQuran();
+}
+
+async function renderBooks(){
+  const books=await DB.getBooks();
+  S.books=books;
+  const reading=books.filter(b=>b.status==='reading');
+  const finished=books.filter(b=>b.status==='finished');
+  const paused=books.filter(b=>b.status==='paused');
+
+  let html='';
+  if(!books.length){
+    html='<div class="empty-state" style="margin-top:24px"><svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg><p>No books added yet. Tap + to start.</p></div>';
+  } else {
+    if(reading.length){
+      html+=`<div class="section-label">📖 Currently Reading</div><div class="habit-list" style="margin:0 16px;padding:0">`;
+      html+=reading.map(b=>bookCardHTML(b)).join('');
+      html+='</div>';
+    }
+    if(paused.length){
+      html+=`<div class="section-label">⏸ Paused</div><div class="habit-list" style="margin:0 16px;padding:0">`;
+      html+=paused.map(b=>bookCardHTML(b)).join('');
+      html+='</div>';
+    }
+    if(finished.length){
+      html+=`<div class="section-label">✅ Finished</div><div class="habit-list" style="margin:0 16px;padding:0">`;
+      html+=finished.map(b=>bookCardHTML(b,true)).join('');
+      html+='</div>';
+    }
+  }
+  el('tracker-books').innerHTML=html;
+}
+
+function bookCardHTML(b,finished=false){
+  const pct=b.total_pages?Math.round(100*b.current_page/b.total_pages):0;
+  const emojis=['📗','📘','📙','📕','📒'];
+  const emoji=emojis[b.title.charCodeAt(0)%emojis.length];
+  return`<div class="book-card">
+    <div class="book-header">
+      <div class="book-spine">${emoji}</div>
+      <div class="book-meta">
+        <div class="book-title">${b.title}</div>
+        <div class="book-author">${b.author||'Unknown Author'}</div>
+        <div class="book-pages">p. ${b.current_page} / ${b.total_pages}</div>
+      </div>
+    </div>
+    <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+    <div style="font-size:.75rem;color:var(--text-l);margin-bottom:8px">${pct}% complete</div>
+    <div class="book-actions">
+      <button class="btn btn-secondary btn-sm" onclick="App.editBook('${b.id}')">✏️ Update</button>
+      ${!finished?`<button class="btn btn-accent btn-sm" onclick="App.logReading('${b.id}')">📄 Log Pages</button>`:''}
+      ${!finished?`<button class="btn btn-primary btn-sm" onclick="App.finishBook('${b.id}')">✅ Finished</button>`:''}
+      <button class="btn btn-sm" style="color:var(--danger)" onclick="App.deleteBook('${b.id}')">🗑</button>
+    </div>
+    ${b.personal_notes?`<div style="font-size:.78rem;color:var(--text-m);margin-top:8px;font-style:italic">${b.personal_notes}</div>`:''}
+  </div><div style="height:1px;background:var(--border-l);margin:0 16px"></div>`;
+}
+
+async function renderQuran(){
+  const [q,total,wirdTarget]=await Promise.all([
+    DB.getQuranToday(S.today),
+    DB.getQuranTotal(),
+    DB.getSetting('wird_target')
+  ]);
+  S.quranToday=q;
+  const target=parseInt(wirdTarget||100);
+  const pages=q?.quran_pages||0;
+  const surah=q?.current_surah||'—';
+  const juz=q?.current_juz||'—';
+  const wirdDone=q?.wird_completed||false;
+
+  el('tracker-quran').innerHTML=`
+    <div class="card">
+      <div class="card-title">📖 Quran Progress</div>
+      <div class="quran-grid">
+        <div class="quran-stat"><div class="val">${pages}</div><div class="lab">Pages Today</div></div>
+        <div class="quran-stat"><div class="val">${total}</div><div class="lab">Total Pages</div></div>
+        <div class="quran-stat"><div class="val">${surah}</div><div class="lab">Current Surah</div></div>
+        <div class="quran-stat"><div class="val">${juz}</div><div class="lab">Current Juz</div></div>
+      </div>
+      <div class="wird-row">
+        <div class="wird-check${wirdDone?' done':''}" id="wird-check" onclick="App.toggleWird()">
+          ${svgCheck()}
+        </div>
+        <div style="flex:1">
+          <div style="font-weight:600">Daily Wird</div>
+          <div style="font-size:.75rem;color:var(--text-l)">Target: ${target} times</div>
+        </div>
+        <button class="btn btn-sm btn-secondary" onclick="App.editWirdTarget()">Edit Target</button>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">📝 Update Today</div>
+      <div class="field"><label>Pages Read Today</label>
+        <input type="number" id="q-pages" value="${pages}" min="0" placeholder="0">
+      </div>
+      <div class="field"><label>Current Surah</label>
+        <input type="text" id="q-surah" value="${q?.current_surah||''}" placeholder="Al-Baqarah">
+      </div>
+      <div class="field"><label>Current Juz</label>
+        <input type="number" id="q-juz" value="${q?.current_juz||''}" min="1" max="30" placeholder="1–30">
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="App.saveQuran()">Save</button>
+    </div>
+  `;
+}
+
+// ─── RENDER: NOTES ────────────────────────────────────────────
+async function renderNotes(){
+  el('header-title').textContent='Notes & Ideas';
+  el('header-sub').textContent='';
+  el('header-actions').innerHTML='';
+  el('fab').classList.remove('hidden');
+  el('fab').dataset.action='add-note';
+
+  if(S.noteTab==='notes') await renderNotesList();
+  else if(S.noteTab==='ideas') await renderIdeasList();
+  else await renderLinksList();
+}
+
+async function renderNotesList(){
+  const notes=await DB.getNotes();
+  S.notes=notes;
+  const c=el('notes-content');
+  if(!notes.length){
+    c.innerHTML='<div class="empty-state" style="margin-top:24px"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p>No notes yet.</p></div>';
+    return;
+  }
+  c.innerHTML='<div class="habit-list" style="margin:12px 16px 0;padding:0">'+
+    notes.map(n=>`<div class="note-row${n.completed?' completed':''}" id="note-${n.id}">
+      <div class="note-complete-btn${n.completed?' done':''}" onclick="App.toggleNote('${n.id}',${n.completed})">
+        ${svgCheck()}
+      </div>
+      <div style="flex:1">
+        <div class="note-content">${n.content}</div>
+        ${n.is_reminder&&n.reminder_date?`<div class="note-reminder-badge">🔔 ${fmtTs(n.reminder_date)}</div>`:''}
+        <div class="note-meta">${fmtTs(n.created_at)}</div>
+      </div>
+      <button class="del-btn" onclick="App.deleteNote('${n.id}')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+      </button>
+    </div>`).join('')+'</div>';
+}
+
+async function renderIdeasList(){
+  const ideas=await DB.getIdeas();
+  S.ideas=ideas;
+  const c=el('notes-content');
+  if(!ideas.length){c.innerHTML='<div class="empty-state" style="margin-top:24px"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><p>No ideas captured yet.</p></div>';return;}
+  c.innerHTML='<div class="habit-list" style="margin:12px 16px 0;padding:0">'+
+    ideas.map(i=>`<div class="note-row" id="idea-${i.id}">
+      <div style="flex:1">
+        <div class="idea-category">${i.category||'General'}</div>
+        <div class="note-content">${i.content}</div>
+        <div class="note-meta">${fmtTs(i.created_at)}</div>
+      </div>
+      <button class="del-btn" onclick="App.deleteIdea('${i.id}')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+      </button>
+    </div>`).join('')+'</div>';
+}
+
+async function renderLinksList(){
+  const links=await DB.getLinks();
+  S.links=links;
+  const c=el('notes-content');
+  if(!links.length){c.innerHTML='<div class="empty-state" style="margin-top:24px"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><p>No links saved yet.</p></div>';return;}
+  c.innerHTML='<div class="habit-list" style="margin:12px 16px 0;padding:0">'+
+    links.map(l=>`<div class="note-row" id="link-${l.id}">
+      <div style="flex:1">
+        <div class="note-content"><a href="${l.url}" target="_blank" rel="noopener">${l.title||l.url}</a></div>
+        ${l.notes?`<div class="note-meta">${l.notes}</div>`:''}
+        <div class="link-url">${l.url}</div>
+      </div>
+      <button class="del-btn" onclick="App.deleteLink('${l.id}')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+      </button>
+    </div>`).join('')+'</div>';
+}
+
+// ─── RENDER: ANALYTICS ───────────────────────────────────────
+async function renderAnalytics(){
+  el('header-title').textContent='Analytics';
+  el('header-sub').textContent='Your patterns';
+  el('header-actions').innerHTML='';
+  el('fab').classList.add('hidden');
+
+  const [mood14,comp14,habits30,allHabits,checkins]=await Promise.all([
+    DB.getLast14Mood(),
+    DB.getLast14Completion(),
+    DB.getLast30HabitStats(),
+    DB.getAllHabits(),
+    (async()=>{ const {data}=await sb.from('daily_checkins').select('date,mood'); return data||[]; })()
+  ]);
+
+  // Stat cards
+  const totalDays=checkins.filter(c=>c.mood).length;
+  const avgMood=totalDays?Math.round(10*checkins.filter(c=>c.mood).reduce((s,c)=>s+(c.mood||0),0)/totalDays)/10:0;
+  const allActive=allHabits.filter(h=>h.type!=='bad');
+  el('analytics-stats').innerHTML=`
+    <div class="stat-box"><div class="sv">${totalDays}</div><div class="sl">Days Tracked</div></div>
+    <div class="stat-box"><div class="sv">${avgMood||'—'}</div><div class="sl">Avg Mood (all time)</div></div>
+    <div class="stat-box"><div class="sv">${allActive.filter(h=>h.is_active).length}</div><div class="sl">Active Habits</div></div>
+    <div class="stat-box"><div class="sv">${habits30.length?habits30[0].pct+'%':'—'}</div><div class="sl">Best Habit Rate</div></div>
+  `;
+
+  // Mood chart
+  const last14=[];
+  for(let i=13;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);last14.push(d.toISOString().split('T')[0]);}
+  const moodMap={};mood14.forEach(m=>moodMap[m.date]=m.mood);
+  const moodData=last14.map(d=>moodMap[d]||null);
+  const moodLabels=last14.map(d=>new Date(d+'T00:00:00').toLocaleDateString('en-GB',{month:'short',day:'numeric'}));
+
+  if(S.moodChart) S.moodChart.destroy();
+  const moodCtx=el('mood-chart').getContext('2d');
+  S.moodChart=new Chart(moodCtx,{
+    type:'line',
+    data:{labels:moodLabels,datasets:[{label:'Mood',data:moodData,borderColor:'#C9962B',backgroundColor:'rgba(201,150,43,.1)',borderWidth:2.5,pointRadius:4,pointBackgroundColor:'#C9962B',tension:.35,spanGaps:true}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:1,max:5,ticks:{stepSize:1,callback:v=>['','😞','😕','😐','😊','😄'][v]||v},grid:{color:'rgba(0,0,0,.05)'}},x:{grid:{display:false},ticks:{font:{size:10}}}}}
+  });
+
+  // Completion chart
+  const compMap={};
+  comp14.forEach(l=>{if(!compMap[l.date])compMap[l.date]={done:0,total:0};compMap[l.date].total++;if(l.completed)compMap[l.date].done++;});
+  const compData=last14.map(d=>compMap[d]?Math.round(100*compMap[d].done/compMap[d].total):null);
+
+  if(S.completionChart) S.completionChart.destroy();
+  const compCtx=el('completion-chart').getContext('2d');
+  S.completionChart=new Chart(compCtx,{
+    type:'bar',
+    data:{labels:moodLabels,datasets:[{label:'%',data:compData,backgroundColor:'rgba(27,67,50,.7)',borderRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{callback:v=>v+'%'},grid:{color:'rgba(0,0,0,.05)'}},x:{grid:{display:false},ticks:{font:{size:10}}}}}
+  });
+
+  // Habit bars
+  el('habit-completion-bars').innerHTML=habits30.slice(0,12).map(h=>`
+    <div class="habit-bar-row">
+      <div class="habit-bar-name" title="${h.name}">${h.name}</div>
+      <div class="habit-bar-track"><div class="habit-bar-fill" style="width:${h.pct}%"></div></div>
+      <div class="habit-bar-pct">${h.pct}%</div>
+    </div>`).join('');
+}
+
+// ─── RENDER: SETTINGS ────────────────────────────────────────
+async function renderSettings(){
+  el('header-title').textContent='Settings';
+  el('header-sub').textContent='Manage & Configure';
+  el('header-actions').innerHTML='';
+  el('fab').classList.add('hidden');
+
+  const [islamicAll,regularAll,badAll,sheetsUrl]=await Promise.all([
+    DB.getHabits('islamic'),
+    DB.getHabits('regular'),
+    DB.getHabits('bad'),
+    DB.getSetting('sheets_url')
+  ]);
+
+  S.habits.islamic=islamicAll;
+  S.habits.regular=regularAll;
+  S.habits.bad=badAll;
+
+  if(sheetsUrl) el('sheets-url').value=sheetsUrl;
+
+  renderHabitManager('mgr-islamic',islamicAll,'islamic');
+  renderHabitManager('mgr-regular',regularAll,'regular');
+  renderHabitManager('mgr-bad',badAll,'bad');
+}
+
+function renderHabitManager(containerId,habits,type){
+  const c=el(containerId);
+  if(!habits.length){c.innerHTML=`<div class="text-muted" style="font-size:.82rem;padding:8px 0">No habits yet.</div>`;return;}
+  c.innerHTML=habits.map(h=>`
+    <div class="habit-mgr-row" id="mgr-${h.id}">
+      <div class="habit-mgr-name">${h.name}</div>
+      <label class="toggle" title="${h.is_active?'Active (tap to disable)':'Disabled (tap to enable)'}">
+        <input type="checkbox" ${h.is_active?'checked':''} onchange="App.toggleHabitActive('${h.id}',this.checked,'${type}')">
+        <span class="toggle-slider"></span>
+      </label>
+      <button class="btn btn-sm" style="color:var(--danger)" onclick="App.confirmDeleteHabit('${h.id}','${h.name}','${type}')">🗑</button>
+    </div>`).join('');
+}
+
+// ─── MODAL SYSTEM ─────────────────────────────────────────────
+function openModal(title,bodyHTML,actions=[]){
+  el('modal-title').textContent=title;
+  el('modal-body').innerHTML=bodyHTML;
+  el('modal-actions').innerHTML=actions.map(a=>`<button class="btn ${a.cls||'btn-secondary'}" onclick="${a.fn}">${a.label}</button>`).join('');
+  el('modal-overlay').classList.add('open');
+}
+function closeModal(e){
+  if(!e||e.target===el('modal-overlay')) el('modal-overlay').classList.remove('open');
+}
+
+// ─── APP OBJECT (public API bound to DOM events) ──────────────
+const App = {
+  // ── Navigation ──
+  nav(view,el_){
+    document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+    el_.classList.add('active');
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    el('view-'+view).classList.add('active');
+    S.view=view;
+    if(view==='today') renderToday();
+    else if(view==='trackers') renderTrackers();
+    else if(view==='notes') renderNotes();
+    else if(view==='analytics') renderAnalytics();
+    else if(view==='settings') renderSettings();
+  },
+
+  switchTracker(tab,el_){
+    document.querySelectorAll('.tracker-tab').forEach(t=>t.classList.remove('active'));
+    el_.classList.add('active');
+    el('tracker-books').classList.toggle('hidden',tab!=='books');
+    el('tracker-quran').classList.toggle('hidden',tab!=='quran');
+    S.trackerTab=tab;
+    el('fab').dataset.action=tab==='books'?'add-book':'';
+    el('fab').classList.toggle('hidden',tab!=='books');
+    if(tab==='books') renderBooks();
+    else renderQuran();
+  },
+
+  switchNoteTab(tab,el_){
+    document.querySelectorAll('.notes-tab').forEach(t=>t.classList.remove('active'));
+    el_.classList.add('active');
+    S.noteTab=tab;
+    el('fab').dataset.action='add-'+tab.slice(0,-1);
+    if(tab==='notes') { el('fab').dataset.action='add-note'; renderNotesList(); }
+    else if(tab==='ideas') { el('fab').dataset.action='add-idea'; renderIdeasList(); }
+    else { el('fab').dataset.action='add-link'; renderLinksList(); }
+  },
+
+  fabAction(){
+    const action=el('fab').dataset.action;
+    if(action==='add-book') this.addBookModal();
+    else if(action==='add-note') this.addNoteModal();
+    else if(action==='add-idea') this.addIdeaModal();
+    else if(action==='add-link') this.addLinkModal();
+  },
+
+  // ── PIN ──
+  async saveSetup(){
+    const url=el('setup-url').value.trim();
+    const key=el('setup-key').value.trim();
+    const pin=el('setup-pin').value.trim();
+    el('setup-error').textContent='';
+    if(!url||!key||!pin){ el('setup-error').textContent='All fields required.';return; }
+    if(pin.length<4){ el('setup-error').textContent='PIN must be at least 4 digits.';return; }
+    const hash=await sha256(pin);
+    CFG.url=url; CFG.key=key; CFG.pinHash=hash;
+    initSB();
+    try{
+      await DB.setSetting('pin_hash',hash);
+      sessionStorage.setItem('auth','1');
+      el('setup-screen').classList.add('hidden');
+      el('app').classList.remove('hidden');
+      await renderToday();
+      toast('Welcome! Setup complete ✓');
+    }catch(e){
+      el('setup-error').textContent='Connection failed. Check URL and key.';
+      console.error(e);
+    }
+  },
+
+  pinKey(k){
+    const buf=S.pinBuffer;
+    if(k==='clear') S.pinBuffer='';
+    else if(k==='back') S.pinBuffer=buf.slice(0,-1);
+    else if(buf.length<6) S.pinBuffer=buf+k;
+    const l=S.pinBuffer.length;
+    el('pin-error').textContent='';
+    for(let i=0;i<4;i++) el('pd'+i).classList.toggle('filled',i<l);
+    if(S.pinBuffer.length>=CFG.pinHash.length-60) this.checkPIN();
+  },
+
+  async checkPIN(){
+    const hash=await sha256(S.pinBuffer);
+    if(hash===CFG.pinHash){
+      sessionStorage.setItem('auth','1');
+      el('pin-screen').classList.add('hidden');
+      el('app').classList.remove('hidden');
+      await renderToday();
+    } else {
+      el('pin-error').textContent='Incorrect PIN';
+      S.pinBuffer='';
+      for(let i=0;i<4;i++) el('pd'+i).classList.remove('filled');
+      setTimeout(()=>el('pin-error').textContent='',1500);
+    }
+  },
+
+  async changePIN(){
+    const np=el('new-pin').value.trim();
+    const cp=el('confirm-pin').value.trim();
+    if(!np||np.length<4){ toast('PIN must be 4+ digits');return; }
+    if(np!==cp){ toast('PINs do not match');return; }
+    const hash=await sha256(np);
+    CFG.pinHash=hash;
+    await DB.setSetting('pin_hash',hash);
+    el('new-pin').value=''; el('confirm-pin').value='';
+    toast('PIN updated ✓');
+  },
+
+  logout(){
+    sessionStorage.removeItem('auth');
+    el('app').classList.add('hidden');
+    el('pin-screen').classList.remove('hidden');
+    S.pinBuffer='';
+    for(let i=0;i<4;i++) el('pd'+i).classList.remove('filled');
+  },
+
+  // ── Today ──
+  async setMood(m){
+    document.querySelectorAll('.mood-btn').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.mood)===m));
+    await DB.upsertCheckin(S.today,{mood:m});
+  },
+
+  async toggleHabit(habitId,listId){
+    const cur=S.habitLogs[habitId]||false;
+    const next=!cur;
+    S.habitLogs[habitId]=next;
+    const row=document.getElementById('hr-'+habitId);
+    if(row){
+      row.classList.toggle('done',next);
+      const chk=row.querySelector('.habit-check');
+      chk.classList.toggle('checked',next);
+    }
+    updateRing();
+    await DB.upsertHabitLog(habitId,S.today,next);
+  },
+
+  async logSlip(habitId){
+    const confirmed=await App.confirm(`Log a slip for today? This resets the streak.`);
+    if(!confirmed) return;
+    await DB.logSlip(habitId,S.today,'');
+    toast('Slip logged — keep going 💪');
+    renderBadHabits(S.habits.bad,S.today);
+  },
+
+  // ── Books ──
+  addBookModal(){
+    openModal('Add Book',`
+      <div class="field"><label>Title</label><input id="m-title" placeholder="Book title" type="text"></div>
+      <div class="field"><label>Author</label><input id="m-author" placeholder="Author name" type="text"></div>
+      <div class="field"><label>Total Pages</label><input id="m-totalpages" type="number" placeholder="300" min="1"></div>
+      <div class="field"><label>Current Page</label><input id="m-curpage" type="number" placeholder="0" min="0"></div>
+    `,[
+      {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal(event)'},
+      {label:'Add Book',cls:'btn-primary',fn:'App.saveNewBook()'}
+    ]);
+  },
+
+  async saveNewBook(){
+    const title=el('m-title').value.trim();
+    if(!title){toast('Title required');return;}
+    await DB.addBook({title,author:el('m-author').value.trim(),total_pages:parseInt(el('m-totalpages').value)||100,current_page:parseInt(el('m-curpage').value)||0,status:'reading'});
+    closeModal({});
+    await renderBooks();
+    toast('Book added ✓');
+  },
+
+  editBook(id){
+    const b=S.books.find(x=>x.id===id); if(!b)return;
+    openModal('Update Book',`
+      <div class="field"><label>Current Page</label><input id="m-cp" type="number" value="${b.current_page}" min="0" max="${b.total_pages}"></div>
+      <div class="field"><label>Total Pages</label><input id="m-tp" type="number" value="${b.total_pages}" min="1"></div>
+      <div class="field"><label>Notes</label><textarea id="m-notes" rows="3" placeholder="Personal notes...">${b.personal_notes||''}</textarea></div>
+    `,[
+      {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal(event)'},
+      {label:'Save',cls:'btn-primary',fn:`App.saveBook('${id}')`}
+    ]);
+  },
+
+  async saveBook(id){
+    await DB.updateBook(id,{current_page:parseInt(el('m-cp').value)||0,total_pages:parseInt(el('m-tp').value)||100,personal_notes:el('m-notes').value.trim()});
+    closeModal({});
+    await renderBooks();
+    toast('Book updated ✓');
+  },
+
+  logReading(id){
+    openModal('Log Reading Session',`
+      <div class="field"><label>Pages Read Today</label><input id="m-pr" type="number" placeholder="0" min="0"></div>
+    `,[
+      {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal(event)'},
+      {label:'Log',cls:'btn-primary',fn:`App.saveReadingLog('${id}')`}
+    ]);
+  },
+
+  async saveReadingLog(id){
+    const pages=parseInt(el('m-pr').value)||0;
+    if(!pages){toast('Enter pages read');return;}
+    const b=S.books.find(x=>x.id===id);
+    await Promise.all([
+      DB.addReadingLog(id,S.today,pages),
+      DB.updateBook(id,{current_page:Math.min((b?.current_page||0)+pages,b?.total_pages||9999)})
+    ]);
+    closeModal({});
+    await renderBooks();
+    toast(`+${pages} pages logged ✓`);
+  },
+
+  async finishBook(id){
+    const confirmed=await App.confirm('Mark this book as finished?');
+    if(!confirmed)return;
+    await DB.updateBook(id,{status:'finished',finished_at:S.today});
+    await renderBooks();
+    toast('📚 Book finished — great job!');
+  },
+
+  async deleteBook(id){
+    const confirmed=await App.confirm('Delete this book and all its reading logs?');
+    if(!confirmed)return;
+    await DB.deleteBook(id);
+    await renderBooks();
+    toast('Book deleted');
+  },
+
+  // ── Quran / Wird ──
+  async toggleWird(){
+    const cur=S.quranToday?.wird_completed||false;
+    await DB.upsertCheckin(S.today,{wird_completed:!cur});
+    if(!S.quranToday) S.quranToday={};
+    S.quranToday.wird_completed=!cur;
+    el('wird-check').classList.toggle('done',!cur);
+    el('wird-check').innerHTML=svgCheck();
+    toast(!cur?'Wird completed! 🌙':'Wird unmarked');
+  },
+
+  async saveQuran(){
+    const pages=parseInt(el('q-pages').value)||0;
+    const surah=el('q-surah').value.trim();
+    const juz=parseInt(el('q-juz').value)||null;
+    await DB.upsertCheckin(S.today,{quran_pages:pages,current_surah:surah,current_juz:juz});
+    await renderQuran();
+    toast('Quran tracker updated ✓');
+  },
+
+  async editWirdTarget(){
+    const cur=await DB.getSetting('wird_target')||'100';
+    openModal('Daily Wird Target',`
+      <div class="field"><label>Wird Target (count)</label><input id="m-wird" type="number" value="${cur}" min="1"></div>
+    `,[
+      {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal(event)'},
+      {label:'Save',cls:'btn-primary',fn:'App.saveWirdTarget()'}
+    ]);
+  },
+
+  async saveWirdTarget(){
+    const v=parseInt(el('m-wird').value)||100;
+    await DB.setSetting('wird_target',v);
+    closeModal({});
+    await renderQuran();
+    toast('Wird target updated ✓');
+  },
+
+  // ── Notes ──
+  addNoteModal(){
+    openModal('New Note',`
+      <div class="field"><label>Content</label><textarea id="m-nc" rows="4" placeholder="Write your note..."></textarea></div>
+      <div class="field"><label>Reminder Date (optional)</label><input type="datetime-local" id="m-rd"></div>
+    `,[
+      {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal(event)'},
+      {label:'Save Note',cls:'btn-primary',fn:'App.saveNote()'}
+    ]);
+  },
+
+  async saveNote(){
+    const content=el('m-nc').value.trim();
+    if(!content){toast('Content required');return;}
+    const rd=el('m-rd').value;
+    await DB.addNote({content,reminder_date:rd||null,is_reminder:!!rd,completed:false});
+    closeModal({});
+    await renderNotesList();
+    toast('Note saved ✓');
+  },
+
+  async toggleNote(id,cur){
+    await DB.updateNote(id,{completed:!cur});
+    await renderNotesList();
+  },
+
+  async deleteNote(id){
+    const ok=await App.confirm('Delete this note?');
+    if(!ok)return;
+    await DB.deleteNote(id);
+    await renderNotesList();
+    toast('Note deleted');
+  },
+
+  // ── Ideas ──
+  addIdeaModal(){
+    openModal('Capture Idea',`
+      <div class="field"><label>Idea</label><textarea id="m-ic" rows="3" placeholder="Describe your idea..."></textarea></div>
+      <div class="field"><label>Category</label>
+        <select id="m-icat">
+          <option>General</option><option>Work</option><option>Personal</option><option>Business</option><option>Learning</option><option>Creative</option>
+        </select>
+      </div>
+    `,[
+      {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal(event)'},
+      {label:'Save Idea',cls:'btn-primary',fn:'App.saveIdea()'}
+    ]);
+  },
+
+  async saveIdea(){
+    const content=el('m-ic').value.trim();
+    if(!content){toast('Idea content required');return;}
+    await DB.addIdea({content,category:el('m-icat').value});
+    closeModal({});
+    await renderIdeasList();
+    toast('Idea captured ✓');
+  },
+
+  async deleteIdea(id){
+    const ok=await App.confirm('Delete this idea?');
+    if(!ok)return;
+    await DB.deleteIdea(id);
+    await renderIdeasList();
+    toast('Idea deleted');
+  },
+
+  // ── Links ──
+  addLinkModal(){
+    openModal('Save Link',`
+      <div class="field"><label>URL</label><input id="m-lu" type="url" placeholder="https://..."></div>
+      <div class="field"><label>Title</label><input id="m-lt" type="text" placeholder="Page title"></div>
+      <div class="field"><label>Notes</label><input id="m-ln" type="text" placeholder="Why you saved it..."></div>
+    `,[
+      {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal(event)'},
+      {label:'Save Link',cls:'btn-primary',fn:'App.saveLink()'}
+    ]);
+  },
+
+  async saveLink(){
+    const url=el('m-lu').value.trim();
+    if(!url){toast('URL required');return;}
+    await DB.addLink({url,title:el('m-lt').value.trim(),notes:el('m-ln').value.trim()});
+    closeModal({});
+    await renderLinksList();
+    toast('Link saved ✓');
+  },
+
+  async deleteLink(id){
+    const ok=await App.confirm('Delete this link?');
+    if(!ok)return;
+    await DB.deleteLink(id);
+    await renderLinksList();
+    toast('Link deleted');
+  },
+
+  // ── Habits Manager ──
+  async addHabit(type){
+    const inputId=`new-${type}-name`;
+    const name=el(inputId).value.trim();
+    if(!name){toast('Enter a name');return;}
+    const list=S.habits[type];
+    const sortOrder=(list.length?Math.max(...list.map(h=>h.sort_order||0)):0)+1;
+    await DB.addHabit(name,type,sortOrder);
+    el(inputId).value='';
+    await renderSettings();
+    if(type!=='bad') await renderToday();
+    toast(`${name} added ✓`);
+  },
+
+  async toggleHabitActive(id,active,type){
+    await DB.updateHabit(id,{is_active:active});
+    toast(active?'Habit enabled':'Habit disabled (history preserved)');
+    if(S.view==='today') await renderToday();
+  },
+
+  confirmDeleteHabit(id,name,type){
+    openModal('Delete Habit',`
+      <p>Delete <strong>${name}</strong> permanently? This cannot be undone and all history will be removed.</p>
+    `,[
+      {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal(event)'},
+      {label:'Delete',cls:'btn-danger',fn:`App.doDeleteHabit('${id}','${type}')`}
+    ]);
+  },
+
+  async doDeleteHabit(id,type){
+    await DB.deleteHabit(id);
+    closeModal({});
+    await renderSettings();
+    if(S.view==='today') await renderToday();
+    toast('Habit deleted');
+  },
+
+  // ── Settings ──
+  async saveSheets(){
+    const url=el('sheets-url').value.trim();
+    await DB.setSetting('sheets_url',url);
+    toast('Webhook URL saved ✓');
+  },
+
+  async syncSheets(){
+    const url=await DB.getSetting('sheets_url');
+    if(!url){toast('Configure webhook URL first');return;}
+    toast('Syncing…',1000);
+    const data=await DB.exportAll();
+    try{
+      await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data),mode:'no-cors'});
+      toast('Synced to Google Sheets ✓');
+    }catch(e){
+      toast('Sync failed — check URL');
+    }
+  },
+
+  async exportJSON(){
+    const data=await DB.exportAll();
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=`life-assistant-${S.today}.json`;
+    a.click();
+    toast('JSON exported ✓');
+  },
+
+  async exportCSV(){
+    const data=await DB.exportAll();
+    let csv='';
+    // Checkins
+    csv+='=== DAILY CHECKINS ===\nDate,Mood,Journal,Wird,Quran Pages,Surah,Juz\n';
+    (data.checkins||[]).forEach(c=>{csv+=`${c.date},${c.mood||''},${JSON.stringify(c.journal||'')},${c.wird_completed},${c.quran_pages},${c.current_surah||''},${c.current_juz||''}\n`;});
+    csv+='\n=== HABITS ===\nName,Type,Active\n';
+    (data.habits||[]).forEach(h=>{csv+=`${h.name},${h.type},${h.is_active}\n`;});
+    csv+='\n=== HABIT LOGS ===\nHabit ID,Date,Completed\n';
+    (data.habit_logs||[]).forEach(l=>{csv+=`${l.habit_id},${l.date},${l.completed}\n`;});
+    csv+='\n=== BOOKS ===\nTitle,Author,Current Page,Total Pages,Status,Finished\n';
+    (data.books||[]).forEach(b=>{csv+=`${b.title},${b.author||''},${b.current_page},${b.total_pages},${b.status},${b.finished_at||''}\n`;});
+    const blob=new Blob([csv],{type:'text/csv'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download=`life-assistant-${S.today}.csv`;
+    a.click();
+    toast('CSV exported ✓');
+  },
+
+  // ── Utility ──
+  closeModal(event){ closeModal(event); },
+
+  confirm(msg){
+    return new Promise(res=>{
+      openModal('Confirm',`<p style="font-size:.92rem;line-height:1.6">${msg}</p>`,[
+        {label:'Cancel',cls:'btn-secondary',fn:`(()=>{App.closeModal({});App._confirmRes(false)})()`},
+        {label:'Confirm',cls:'btn-danger',fn:`(()=>{App.closeModal({});App._confirmRes(true)})()`}
+      ]);
+      App._confirmRes=res;
+    });
+  },
+  _confirmRes:null
+};
+
+// ─── JOURNAL AUTO-SAVE ────────────────────────────────────────
+const journalSave=debounce(async(val)=>{
+  el('journal-save-status').textContent='Saving…';
+  await DB.upsertCheckin(S.today,{journal:val});
+  el('journal-save-status').textContent='Saved ✓';
+  setTimeout(()=>el('journal-save-status').textContent='',2000);
+},900);
+document.getElementById('journal-area').addEventListener('input',e=>journalSave(e.target.value));
+
+// ─── PIN AUTO-SUBMIT ──────────────────────────────────────────
+// Auto-checks when PIN reaches expected length
+const _origPinKey=App.pinKey.bind(App);
+App.pinKey=function(k){
+  _origPinKey(k);
+  if(S.pinBuffer.length>=4) this.checkPIN();
+};
+
+// ─── SERVICE WORKER ───────────────────────────────────────────
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+
+// ─── INIT ─────────────────────────────────────────────────────
+(async function init(){
+  if(!CFG.isConfigured()){
+    el('setup-screen').classList.remove('hidden');
+    return;
+  }
+  initSB();
+  if(sessionStorage.getItem('auth')==='1'){
+    el('app').classList.remove('hidden');
+    await renderToday();
+  } else {
+    el('pin-screen').classList.remove('hidden');
+    // Detect PIN length from hash presence
+    const storedHash=await DB.getSetting('pin_hash').catch(()=>null);
+    if(!storedHash&&CFG.pinHash) {}// use local
+  }
+})();
+</script>
+</body>
+</html>
