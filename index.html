@@ -267,30 +267,14 @@ section.view.active{display:block}
 <body>
 
 <!-- ═══════════════════════════════════════════════════
-  SETUP SCREEN (first run — enter Supabase credentials)
-═══════════════════════════════════════════════════ -->
-<div id="setup-screen" class="splash-screen hidden">
-  <div class="splash-logo">Life Assistant</div>
-  <div class="splash-sub">Let's connect your database</div>
-  <div class="splash-card">
-    <h2>Supabase Setup</h2>
-    <p>You only need to do this once. Find these values in your Supabase project → Settings → API.</p>
-    <div class="field"><label>Project URL</label><input id="setup-url" placeholder="https://xxxx.supabase.co" type="url"></div>
-    <div class="field"><label>Anon / Public Key</label><input id="setup-key" placeholder="eyJ..." type="text"></div>
-    <div class="field"><label>Choose Your PIN</label><input id="setup-pin" placeholder="4–6 digits" type="number" maxlength="6"></div>
-    <div id="setup-error" class="pin-error"></div>
-    <button class="btn btn-primary btn-full mt-16" onclick="App.saveSetup()">Connect & Continue</button>
-  </div>
-</div>
-
 <!-- ═══════════════════════════════════════════════════
   PIN SCREEN
 ═══════════════════════════════════════════════════ -->
 <div id="pin-screen" class="splash-screen hidden">
   <div class="splash-logo">Life Assistant</div>
-  <div class="splash-sub">بسم الله الرحمن الرحيم</div>
+  <div class="splash-sub" id="pin-subtitle">بسم الله الرحمن الرحيم</div>
   <div class="splash-card">
-    <h2 style="text-align:center;margin-bottom:6px">Enter PIN</h2>
+    <h2 style="text-align:center;margin-bottom:6px" id="pin-title">Enter PIN</h2>
     <div class="pin-dots" id="pin-dots">
       <div class="pin-dot" id="pd0"></div>
       <div class="pin-dot" id="pd1"></div>
@@ -551,19 +535,16 @@ section.view.active{display:block}
 
 // ─── CONFIG ───────────────────────────────────────────────────
 const CFG = {
-  get url(){return localStorage.getItem('sb_url')||''},
-  get key(){return localStorage.getItem('sb_key')||''},
+  url: 'https://bbltrktchxsmshmamoxw.supabase.co',
+  key: 'sb_publishable_DHf4dLj-zOc32gTXlfty5w_JxvUGkQI',
   get pinHash(){return localStorage.getItem('pin_hash')||''},
-  set url(v){localStorage.setItem('sb_url',v)},
-  set key(v){localStorage.setItem('sb_key',v)},
   set pinHash(v){localStorage.setItem('pin_hash',v)},
-  isConfigured(){return !!(this.url && this.key && this.pinHash)}
+  isConfigured(){return !!this.pinHash}
 };
 
 // ─── SUPABASE CLIENT ──────────────────────────────────────────
 let sb = null;
 function initSB(){
-  if(!CFG.url||!CFG.key)return;
   sb = supabase.createClient(CFG.url, CFG.key);
 }
 
@@ -588,7 +569,8 @@ const S = {
   moodChart: null,
   completionChart: null,
   pinBuffer: '',
-  pinLen: 4
+  pinLen: 4,
+  _settingPin: false
 };
 
 // ─── UTILITIES ────────────────────────────────────────────────
@@ -1220,30 +1202,6 @@ const App = {
   },
 
   // ── PIN ──
-  async saveSetup(){
-    const url=el('setup-url').value.trim();
-    const key=el('setup-key').value.trim();
-    const pin=el('setup-pin').value.trim();
-    el('setup-error').textContent='';
-    if(!url||!key||!pin){ el('setup-error').textContent='All fields required.';return; }
-    if(pin.length<4){ el('setup-error').textContent='PIN must be at least 4 digits.';return; }
-    const hash=await sha256(pin);
-    CFG.url=url; CFG.key=key; CFG.pinHash=hash;
-    initSB();
-    try{
-      await DB.setSetting('pin_hash',hash);
-      sessionStorage.setItem('auth','1');
-      el('setup-screen').classList.add('hidden');
-      el('app').classList.remove('hidden');
-      await renderToday();
-      setupNotifications();
-      toast('Welcome! Setup complete ✓');
-    }catch(e){
-      el('setup-error').textContent='Connection failed. Check URL and key.';
-      console.error(e);
-    }
-  },
-
   pinKey(k){
     const buf=S.pinBuffer;
     if(k==='clear') S.pinBuffer='';
@@ -1256,13 +1214,27 @@ const App = {
   },
 
   async checkPIN(){
+    if(S._settingPin){
+      if(S.pinBuffer.length < 4){ el('pin-error').textContent='Use at least 4 digits'; S.pinBuffer=''; return; }
+      const hash = await sha256(S.pinBuffer);
+      CFG.pinHash = hash;
+      await DB.setSetting('pin_hash', hash).catch(()=>{});
+      S._settingPin = false;
+      S.pinBuffer = '';
+      for(let i=0;i<4;i++) el('pd'+i).classList.remove('filled');
+      el('pin-title').textContent = 'Enter PIN';
+      el('pin-subtitle').textContent = 'بسم الله الرحمن الرحيم';
+      el('pin-error').textContent = 'PIN set! Now enter it to continue.';
+      setTimeout(()=>el('pin-error').textContent='',2000);
+      return;
+    }
     const hash=await sha256(S.pinBuffer);
     if(hash===CFG.pinHash){
       sessionStorage.setItem('auth','1');
       el('pin-screen').classList.add('hidden');
       el('app').classList.remove('hidden');
       await renderToday();
-      setupNotifications(); // request permission + check due reminders
+      setupNotifications();
     } else {
       el('pin-error').textContent='Incorrect PIN';
       S.pinBuffer='';
@@ -1774,20 +1746,23 @@ initSW();
 
 // ─── INIT ─────────────────────────────────────────────────────
 (async function init(){
-  if(!CFG.isConfigured()){
-    el('setup-screen').classList.remove('hidden');
+  initSB(); // credentials are hardcoded — always ready
+
+  if(!CFG.pinHash){
+    // First time on this device — ask to set a PIN
+    el('pin-screen').classList.remove('hidden');
+    el('pin-title').textContent='Set Your PIN';
+    el('pin-subtitle').textContent='Choose a 4-digit PIN to protect your app';
+    S._settingPin = true;
     return;
   }
-  initSB();
+
   if(sessionStorage.getItem('auth')==='1'){
     el('app').classList.remove('hidden');
     await renderToday();
     setupNotifications();
   } else {
     el('pin-screen').classList.remove('hidden');
-    // Detect PIN length from hash presence
-    const storedHash=await DB.getSetting('pin_hash').catch(()=>null);
-    if(!storedHash&&CFG.pinHash) {}// use local
   }
 })();
 </script>
