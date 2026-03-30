@@ -95,6 +95,38 @@ section.view.active{display:block}
 
 /* ─── TODAY VIEW ─────────────────────────────────────── */
 .date-header{padding:16px 16px 0;display:flex;flex-direction:column;gap:4px}
+
+/* ─── PRAYER TIMES ───────────────────────────────────── */
+.prayer-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:4px}
+.prayer-item{display:flex;flex-direction:column;align-items:center;padding:8px 4px;border-radius:10px;background:var(--surface2);transition:all .2s}
+.prayer-item.next{background:var(--primary);box-shadow:0 2px 10px rgba(27,67,50,.25)}
+.prayer-item.passed{opacity:.45}
+.prayer-name{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-l)}
+.prayer-time{font-size:.82rem;font-weight:600;color:var(--text);margin-top:3px}
+.prayer-item.next .prayer-name,.prayer-item.next .prayer-time{color:#fff}
+.prayer-countdown{font-size:.72rem;font-weight:600;color:var(--primary-l);margin-top:6px;text-align:center}
+
+/* ─── HABIT STREAKS ──────────────────────────────────── */
+.streak-pill{font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--accent-l);color:var(--accent);margin-left:auto;flex-shrink:0;white-space:nowrap}
+.streak-pill.hot{background:var(--primary-l)30;color:var(--primary)}
+.streak-pill.zero{display:none}
+
+/* ─── WEEKLY REVIEW ──────────────────────────────────── */
+.week-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.week-nav span{font-size:.85rem;font-weight:600;color:var(--text)}
+.week-day-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:14px}
+.week-day{display:flex;flex-direction:column;align-items:center;gap:3px}
+.week-day-label{font-size:.6rem;font-weight:600;color:var(--text-l);text-transform:uppercase}
+.week-day-mood{width:30px;height:30px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:.95rem}
+.week-day-pct{font-size:.6rem;color:var(--text-l);font-weight:500}
+.week-habit-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.week-habit-name{font-size:.78rem;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.week-habit-dots{display:flex;gap:3px}
+.week-dot{width:16px;height:16px;border-radius:4px;background:var(--border)}
+.week-dot.done{background:var(--primary-l)}
+.week-dot.today{border:2px solid var(--primary)}
+.review-textarea{width:100%;min-height:80px;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:.85rem;resize:vertical;background:var(--bg);color:var(--text);font-family:var(--font-body)}
+.review-textarea:focus{border-color:var(--primary-m);outline:none}
 .date-day{font-family:var(--font-head);font-size:1.8rem;font-weight:600;line-height:1;text-align:center}
 .date-full{font-size:.8rem;color:var(--text-m);margin-top:4px;text-align:center}
 .date-header-past .mood-btn,.date-header-past .journal-area,.date-header-past .habit-check{pointer-events:none;opacity:.65}
@@ -350,6 +382,12 @@ section.view.active{display:block}
         </div>
       </div>
 
+      <!-- Prayer Times -->
+      <div class="card" id="prayer-card">
+        <div class="card-title" style="margin-bottom:8px">🕌 Prayer Times <span class="prayer-countdown" id="prayer-countdown" style="display:inline;margin-left:8px;font-family:var(--font-body);font-size:.75rem"></span></div>
+        <div class="prayer-grid" id="prayer-grid"><div style="color:var(--text-l);font-size:.8rem;grid-column:1/-1;text-align:center;padding:8px">Loading prayer times…</div></div>
+      </div>
+
       <!-- Mood -->
       <div class="card">
         <div class="card-title">✨ How are you feeling?</div>
@@ -410,19 +448,26 @@ section.view.active{display:block}
 
     <!-- ─── ANALYTICS ────────────────────────────── -->
     <section id="view-analytics" class="view">
-      <div class="stat-grid" id="analytics-stats"></div>
-      <div class="chart-card">
-        <div class="chart-title">😊 Mood (Last 14 Days)</div>
-        <div class="chart-container"><canvas id="mood-chart"></canvas></div>
+      <div class="tracker-tabs" style="margin-bottom:0">
+        <div class="tracker-tab active" onclick="App.switchAnalyticsTab('stats',this)">📊 Stats</div>
+        <div class="tracker-tab" onclick="App.switchAnalyticsTab('weekly',this)">📅 Weekly Review</div>
       </div>
-      <div class="chart-card">
-        <div class="chart-title">✅ Habit Completion Rate (30 Days)</div>
-        <div id="habit-completion-bars"></div>
+      <div id="analytics-stats-panel">
+        <div class="stat-grid" id="analytics-stats"></div>
+        <div class="chart-card">
+          <div class="chart-title">😊 Mood (Last 14 Days)</div>
+          <div class="chart-container"><canvas id="mood-chart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">✅ Habit Completion Rate (30 Days)</div>
+          <div id="habit-completion-bars"></div>
+        </div>
+        <div class="chart-card" style="margin-bottom:16px">
+          <div class="chart-title">📈 Daily Completion (Last 14 Days)</div>
+          <div class="chart-container"><canvas id="completion-chart"></canvas></div>
+        </div>
       </div>
-      <div class="chart-card" style="margin-bottom:16px">
-        <div class="chart-title">📈 Daily Completion (Last 14 Days)</div>
-        <div class="chart-container"><canvas id="completion-chart"></canvas></div>
-      </div>
+      <div id="analytics-weekly-panel" class="hidden" style="padding-bottom:16px"></div>
     </section>
 
     <!-- ─── SETTINGS ─────────────────────────────── -->
@@ -570,7 +615,9 @@ const S = {
   completionChart: null,
   pinBuffer: '',
   pinLen: 4,
-  _settingPin: false
+  _settingPin: false,
+  prayerTimings: null,
+  goodStreaks: {}
 };
 
 // ─── UTILITIES ────────────────────────────────────────────────
@@ -767,24 +814,39 @@ async function renderToday(){
   ja.style.opacity = isToday ? '1' : '0.65';
   el('journal-save-status').textContent = '';
 
+  // Prayer times (only load on today view, non-blocking)
+  if(isToday) loadPrayerTimes();
+
+  // Habit streaks (only on today, batch fetch)
+  let streaks = {};
+  if(isToday){
+    const allGoodHabits = [...S.habits.islamic, ...S.habits.regular];
+    streaks = await computeAllGoodStreaks(allGoodHabits.map(h=>h.id));
+    S.goodStreaks = streaks;
+  }
+
   // Habit lists
-  renderHabitList('islamic-habits-list', S.habits.islamic, logMap, isToday);
-  renderHabitList('regular-habits-list', S.habits.regular, logMap, isToday);
+  renderHabitList('islamic-habits-list', S.habits.islamic, logMap, isToday, streaks);
+  renderHabitList('regular-habits-list', S.habits.regular, logMap, isToday, streaks);
   await renderBadHabits(S.habits.bad, date);
   updateRing();
 }
 
-function renderHabitList(containerId, habits, logMap, interactive=true){
+function renderHabitList(containerId, habits, logMap, interactive=true, streaks={}){
   const c = el(containerId);
   if(!habits.length){ c.innerHTML='<div class="empty-state" style="padding:16px"><p>No active habits. Add some in Settings.</p></div>'; return; }
   c.innerHTML = habits.map(h => {
     const done = logMap[h.id] || false;
     const clickAttr = interactive ? `onclick="App.toggleHabit('${h.id}','${containerId}')"` : '';
+    const streak = streaks[h.id] || 0;
+    const pillClass = streak >= 7 ? 'hot' : streak === 0 ? 'zero' : '';
+    const pillLabel = streak >= 2 ? `🔥 ${streak}d` : streak === 1 ? '1d' : '';
     return `<div class="habit-row${done?' done':''}" id="hr-${h.id}">
       <div class="habit-check${done?' checked':''}" ${clickAttr} style="${!interactive?'cursor:default':''}">
         ${svgCheck()}
       </div>
       <div class="habit-name">${h.name}</div>
+      ${streak > 0 ? `<div class="streak-pill ${pillClass}">${pillLabel}</div>` : ''}
     </div>`;
   }).join('');
 }
@@ -1021,7 +1083,13 @@ async function renderAnalytics(){
   el('header-sub').textContent='Your patterns';
   el('header-actions').innerHTML='';
   el('fab').classList.add('hidden');
+  // Default to stats tab
+  el('analytics-stats-panel').classList.remove('hidden');
+  el('analytics-weekly-panel').classList.add('hidden');
+  await renderAnalyticsStats();
+}
 
+async function renderAnalyticsStats(){
   const [mood14,comp14,habits30,allHabits,checkins]=await Promise.all([
     DB.getLast14Mood(),
     DB.getLast14Completion(),
@@ -1029,14 +1097,12 @@ async function renderAnalytics(){
     DB.getAllHabits(),
     (async()=>{
       const {data}=await sb.from('daily_checkins').select('date,mood').order('date');
-      // Deduplicate — keep latest entry per date (in case of old duplicate rows)
       const byDate={};
       (data||[]).forEach(r=>{ if(r.mood) byDate[r.date]=r; });
       return Object.values(byDate);
     })()
   ]);
 
-  // Stat cards
   const totalDays=checkins.filter(c=>c.mood).length;
   const MOOD_MAP={1:{e:'😞',l:'Rough'},2:{e:'😕',l:'Meh'},3:{e:'😐',l:'Okay'},4:{e:'😊',l:'Good'},5:{e:'😄',l:'Great'}};
   const avgMood=totalDays?Math.round(checkins.filter(c=>c.mood).reduce((s,c)=>s+(c.mood||0),0)/totalDays):0;
@@ -1049,7 +1115,6 @@ async function renderAnalytics(){
     <div class="stat-box"><div class="sv">${habits30.length?habits30[0].pct+'%':'—'}</div><div class="sl">Best Habit Rate</div></div>
   `;
 
-  // Mood chart
   const last14=[];
   for(let i=13;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);last14.push(d.toISOString().split('T')[0]);}
   const moodMap={};mood14.forEach(m=>moodMap[m.date]=m.mood);
@@ -1064,7 +1129,6 @@ async function renderAnalytics(){
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:1,max:5,ticks:{stepSize:1,callback:v=>['','😞','😕','😐','😊','😄'][v]||v},grid:{color:'rgba(0,0,0,.05)'}},x:{grid:{display:false},ticks:{font:{size:10}}}}}
   });
 
-  // Completion chart
   const compMap={};
   comp14.forEach(l=>{if(!compMap[l.date])compMap[l.date]={done:0,total:0};compMap[l.date].total++;if(l.completed)compMap[l.date].done++;});
   const compData=last14.map(d=>compMap[d]?Math.round(100*compMap[d].done/compMap[d].total):null);
@@ -1077,7 +1141,6 @@ async function renderAnalytics(){
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{callback:v=>v+'%'},grid:{color:'rgba(0,0,0,.05)'}},x:{grid:{display:false},ticks:{font:{size:10}}}}}
   });
 
-  // Habit bars
   el('habit-completion-bars').innerHTML=habits30.slice(0,12).map(h=>`
     <div class="habit-bar-row">
       <div class="habit-bar-name" title="${h.name}">${h.name}</div>
@@ -1171,7 +1234,14 @@ const App = {
     else if(view==='settings') renderSettings();
   },
 
-  switchTracker(tab,el_){
+  switchAnalyticsTab(tab, el_){
+    document.querySelectorAll('#view-analytics .tracker-tab').forEach(t=>t.classList.remove('active'));
+    el_.classList.add('active');
+    el('analytics-stats-panel').classList.toggle('hidden', tab!=='stats');
+    el('analytics-weekly-panel').classList.toggle('hidden', tab!=='weekly');
+    if(tab==='weekly') renderWeeklyReview();
+    else renderAnalyticsStats();
+  },
     document.querySelectorAll('.tracker-tab').forEach(t=>t.classList.remove('active'));
     el_.classList.add('active');
     el('tracker-books').classList.toggle('hidden',tab!=='books');
@@ -1625,6 +1695,13 @@ const App = {
     }
     renderNotifStatus();
   },
+  async saveWeeklyReview(weekKey){
+    const val = el('wr-reflection')?.value?.trim() || '';
+    await DB.setSetting('wr_'+weekKey, val);
+    el('wr-save-status').textContent='Saved ✓';
+    setTimeout(()=>{ if(el('wr-save-status')) el('wr-save-status').textContent=''; },2000);
+  },
+
   closeModal(){ closeModal(); },
 
   confirm(msg){
@@ -1733,6 +1810,7 @@ async function setupNotifications() {
   sendCredentialsToSW();
   await registerPeriodicSync();
   await checkDueRemindersNow();
+  scheduleFridayReminder();
 }
 
 // Re-check when app comes back to foreground
@@ -1743,6 +1821,351 @@ document.addEventListener('visibilitychange', () => {
 });
 
 initSW();
+
+// ─── PRAYER TIMES ────────────────────────────────────────────
+const PRAYERS = ['Fajr','Dhuhr','Asr','Maghrib','Isha'];
+const SHARJAH = { lat: 25.3463, lng: 55.4209, method: 4 }; // Umm Al-Qura
+let prayerTimers = [];
+let countdownInterval = null;
+
+async function loadPrayerTimes(){
+  try {
+    const cached = sessionStorage.getItem('prayer_'+S.today);
+    let timings;
+    if(cached){
+      timings = JSON.parse(cached);
+    } else {
+      const res = await fetch(
+        `https://api.aladhan.com/v1/timings/${S.today}?latitude=${SHARJAH.lat}&longitude=${SHARJAH.lng}&method=${SHARJAH.method}`
+      );
+      const json = await res.json();
+      timings = json.data.timings;
+      sessionStorage.setItem('prayer_'+S.today, JSON.stringify(timings));
+    }
+    S.prayerTimings = timings;
+    renderPrayerCard(timings);
+    schedulePrayerNotifications(timings);
+    startPrayerCountdown(timings);
+  } catch(e) {
+    el('prayer-grid').innerHTML = '<div style="color:var(--text-l);font-size:.8rem;grid-column:1/-1;text-align:center;padding:8px">Prayer times unavailable offline</div>';
+  }
+}
+
+function parsePrayerTime(timeStr, dateStr){
+  const [h,m] = timeStr.split(':').map(Number);
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setHours(h, m, 0, 0);
+  return d;
+}
+
+function renderPrayerCard(timings){
+  const now = new Date();
+  let nextIdx = -1;
+  const times = PRAYERS.map(p => ({
+    name: p,
+    time: timings[p],
+    dt: parsePrayerTime(timings[p], S.today)
+  }));
+  for(let i=0; i<times.length; i++){
+    if(times[i].dt > now){ nextIdx = i; break; }
+  }
+
+  el('prayer-grid').innerHTML = times.map((p, i) => {
+    const isNext = i === nextIdx;
+    const passed = nextIdx === -1 ? true : i < nextIdx;
+    const fmt = p.dt.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    return `<div class="prayer-item${isNext?' next':''}${passed?' passed':''}">
+      <div class="prayer-name">${p.name}</div>
+      <div class="prayer-time">${fmt}</div>
+    </div>`;
+  }).join('');
+}
+
+function startPrayerCountdown(timings){
+  if(countdownInterval) clearInterval(countdownInterval);
+  function tick(){
+    const now = new Date();
+    const el_cd = el('prayer-countdown');
+    if(!el_cd) { clearInterval(countdownInterval); return; }
+    const times = PRAYERS.map(p => parsePrayerTime(timings[p], S.today));
+    const next = times.find(t => t > now);
+    if(!next){ el_cd.textContent = '· All prayers done ✓'; return; }
+    const diff = Math.floor((next - now) / 1000);
+    const h = Math.floor(diff/3600);
+    const m = Math.floor((diff%3600)/60);
+    const s = diff % 60;
+    const label = PRAYERS[times.indexOf(next)];
+    el_cd.textContent = `· ${label} in ${h>0?h+'h ':''}${m}m ${s}s`;
+    // Update prayer card highlighting every minute
+    if(s === 0) renderPrayerCard(timings);
+  }
+  tick();
+  countdownInterval = setInterval(tick, 1000);
+}
+
+async function schedulePrayerNotifications(timings){
+  if(Notification.permission !== 'granted') return;
+  // Clear previous prayer timers
+  prayerTimers.forEach(t => clearTimeout(t));
+  prayerTimers = [];
+
+  const now = new Date();
+  PRAYERS.forEach(prayer => {
+    const prayerDt = parsePrayerTime(timings[prayer], S.today);
+
+    // 1. 5 min BEFORE — "Prayer soon"
+    const before5 = new Date(prayerDt.getTime() - 5*60*1000);
+    if(before5 > now){
+      const ms = before5 - now;
+      prayerTimers.push(setTimeout(() => {
+        new Notification(`🕌 ${prayer} in 5 minutes`, {
+          body: 'Time to prepare for prayer.',
+          icon: '/icon.svg',
+          tag: `prayer-before-${prayer}`,
+          silent: false
+        });
+      }, ms));
+    }
+
+    // 2. AT prayer time — Adhan
+    if(prayerDt > now){
+      const ms = prayerDt - now;
+      prayerTimers.push(setTimeout(() => {
+        new Notification(`🕌 ${prayer} — Time to pray`, {
+          body: 'الله أكبر · حي على الصلاة',
+          icon: '/icon.svg',
+          tag: `prayer-athan-${prayer}`,
+          silent: false
+        });
+        if(S.view === 'today') renderPrayerCard(S.prayerTimings);
+      }, ms));
+    }
+
+    // 3. 10 min AFTER — "10 min remaining for Sunnah"
+    const after10 = new Date(prayerDt.getTime() + 10*60*1000);
+    if(after10 > now){
+      const ms = after10 - now;
+      prayerTimers.push(setTimeout(() => {
+        new Notification(`🕌 ${prayer} — Sunnah reminder`, {
+          body: '10 minutes have passed. Don\'t miss the Sunnah prayers.',
+          icon: '/icon.svg',
+          tag: `prayer-sunnah-${prayer}`,
+          silent: false
+        });
+      }, ms));
+    }
+  });
+}
+
+// ─── HABIT STREAKS (GOOD HABITS) ──────────────────────────────
+async function computeAllGoodStreaks(habitIds){
+  if(!habitIds.length) return {};
+  // Fetch last 90 days of logs for all habits in ONE query
+  const from = new Date();
+  from.setDate(from.getDate() - 89);
+  const fromStr = from.toISOString().split('T')[0];
+  const { data: logs } = await sb
+    .from('habit_logs')
+    .select('habit_id, date, completed')
+    .in('habit_id', habitIds)
+    .gte('date', fromStr)
+    .eq('completed', true)
+    .order('date', {ascending: false});
+
+  // Group by habit
+  const byHabit = {};
+  habitIds.forEach(id => byHabit[id] = new Set());
+  (logs||[]).forEach(l => byHabit[l.habit_id]?.add(l.date));
+
+  // Compute streak per habit
+  const streaks = {};
+  habitIds.forEach(id => {
+    const doneSet = byHabit[id];
+    let streak = 0;
+    const d = new Date(S.today + 'T00:00:00');
+    while(true){
+      const ds = d.toISOString().split('T')[0];
+      if(!doneSet.has(ds)) break;
+      streak++;
+      d.setDate(d.getDate() - 1);
+      if(streak > 90) break;
+    }
+    streaks[id] = streak;
+  });
+  return streaks;
+}
+
+// ─── WEEKLY REVIEW ────────────────────────────────────────────
+function getWeekBounds(offset=0){
+  // Week = Saturday → Friday (Islamic week)
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun … 6=Sat
+  // Days since last Saturday
+  const sinceSat = (day + 1) % 7;
+  const sat = new Date(now);
+  sat.setDate(now.getDate() - sinceSat + (offset * 7));
+  sat.setHours(0,0,0,0);
+  const fri = new Date(sat);
+  fri.setDate(sat.getDate() + 6);
+  return { start: sat, end: fri };
+}
+
+function dateRange(start, end){
+  const dates = [];
+  const d = new Date(start);
+  while(d <= end){ dates.push(d.toISOString().split('T')[0]); d.setDate(d.getDate()+1); }
+  return dates;
+}
+
+async function renderWeeklyReview(offset=0){
+  const panel = el('analytics-weekly-panel');
+  panel.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-l)">Loading…</div>';
+
+  const { start, end } = getWeekBounds(offset);
+  const dates = dateRange(start, end);
+  const weekKey = start.toISOString().split('T')[0];
+  const DAY_LABELS = ['Sat','Sun','Mon','Tue','Wed','Thu','Fri'];
+  const MOOD_EMOJIS = {1:'😞',2:'😕',3:'😐',4:'😊',5:'😄'};
+
+  // Fetch all data for this week
+  const [checkins, logs, habits, savedReflection] = await Promise.all([
+    (async()=>{ const {data}=await sb.from('daily_checkins').select('date,mood,journal').in('date', dates); return data||[]; })(),
+    (async()=>{ const {data}=await sb.from('habit_logs').select('habit_id,date,completed').in('date', dates); return data||[]; })(),
+    (async()=>{ const {data}=await sb.from('habits').select('id,name,type').in('type',['islamic','regular']).eq('is_active',true).order('sort_order'); return data||[]; })(),
+    DB.getSetting('wr_'+weekKey)
+  ]);
+
+  const checkinMap = {};
+  checkins.forEach(c => checkinMap[c.date] = c);
+
+  const logMap = {}; // logMap[habit_id][date] = completed
+  logs.forEach(l => {
+    if(!logMap[l.habit_id]) logMap[l.habit_id] = {};
+    logMap[l.habit_id][l.date] = l.completed;
+  });
+
+  // Completion % per day
+  const dayPct = {};
+  dates.forEach(d => {
+    const total = habits.length;
+    const done = habits.filter(h => logMap[h.id]?.[d]).length;
+    dayPct[d] = total ? Math.round(100*done/total) : 0;
+  });
+
+  // Overall week stats
+  const weekDone = habits.reduce((sum,h) => sum + dates.filter(d=>logMap[h.id]?.[d]).length, 0);
+  const weekTotal = habits.length * 7;
+  const weekPct = weekTotal ? Math.round(100*weekDone/weekTotal) : 0;
+  const moods = dates.map(d=>checkinMap[d]?.mood).filter(Boolean);
+  const avgMood = moods.length ? Math.round(moods.reduce((s,m)=>s+m,0)/moods.length) : 0;
+  const bestDay = dates.reduce((best,d) => dayPct[d]>=(dayPct[best]||0)?d:best, dates[0]);
+  const worstDay = dates.reduce((worst,d) => dayPct[d]<=(dayPct[worst]??100)?d:worst, dates[0]);
+
+  // Week label
+  const weekLabel = `${start.toLocaleDateString('en-GB',{month:'short',day:'numeric'})} – ${end.toLocaleDateString('en-GB',{month:'short',day:'numeric',year:'numeric'})}`;
+  const isCurrentWeek = offset === 0;
+  const today = S.today;
+
+  panel.innerHTML = `
+    <div class="card">
+      <div class="week-nav">
+        <button onclick="renderWeeklyReview(${offset-1})" style="padding:6px 10px;border-radius:8px;background:var(--surface2);font-size:.8rem">‹ Prev</button>
+        <span>${weekLabel}</span>
+        <button onclick="renderWeeklyReview(${offset+1})" style="padding:6px 10px;border-radius:8px;background:var(--surface2);font-size:.8rem;opacity:${isCurrentWeek?.3:1}" ${isCurrentWeek?'disabled':''}>Next ›</button>
+      </div>
+
+      <!-- Day grid -->
+      <div class="week-day-grid">
+        ${dates.map((d,i)=>{
+          const mood = checkinMap[d]?.mood;
+          const pct = dayPct[d];
+          const isToday = d === today;
+          return `<div class="week-day">
+            <div class="week-day-label" style="${isToday?'color:var(--primary);font-weight:800':''}">${DAY_LABELS[i]}</div>
+            <div class="week-day-mood" style="${isToday?'border:2px solid var(--primary)':''}">${mood?MOOD_EMOJIS[mood]:'·'}</div>
+            <div class="week-day-pct" style="${pct>=80?'color:var(--primary)':pct>=50?'color:var(--accent)':'color:var(--danger)'}">${pct}%</div>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <!-- Week stats row -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+        <div style="text-align:center;background:var(--surface2);border-radius:10px;padding:10px">
+          <div style="font-size:1.3rem;font-weight:700;color:var(--primary)">${weekPct}%</div>
+          <div style="font-size:.65rem;color:var(--text-l);margin-top:2px">Week Score</div>
+        </div>
+        <div style="text-align:center;background:var(--surface2);border-radius:10px;padding:10px">
+          <div style="font-size:1.3rem">${avgMood?MOOD_EMOJIS[avgMood]:'—'}</div>
+          <div style="font-size:.65rem;color:var(--text-l);margin-top:2px">Avg Mood</div>
+        </div>
+        <div style="text-align:center;background:var(--surface2);border-radius:10px;padding:10px">
+          <div style="font-size:1rem;font-weight:700;color:var(--primary)">${weekDone}/${weekTotal}</div>
+          <div style="font-size:.65rem;color:var(--text-l);margin-top:2px">Habits Done</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Per-habit dots -->
+    <div class="card">
+      <div class="card-title">Habit Breakdown</div>
+      ${habits.map(h=>`
+        <div class="week-habit-row">
+          <div class="week-habit-name" title="${h.name}">${h.name}</div>
+          <div class="week-habit-dots">
+            ${dates.map(d=>{
+              const done = logMap[h.id]?.[d];
+              const isTd = d===today;
+              return `<div class="week-dot${done?' done':''}${isTd?' today':''}" title="${d}"></div>`;
+            }).join('')}
+          </div>
+        </div>`).join('')}
+    </div>
+
+    <!-- Best/Worst -->
+    <div class="card" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div>
+        <div style="font-size:.7rem;font-weight:700;color:var(--text-l);text-transform:uppercase;margin-bottom:4px">🏆 Best Day</div>
+        <div style="font-size:.9rem;font-weight:600">${new Date(bestDay+'T00:00:00').toLocaleDateString('en-GB',{weekday:'long'})}</div>
+        <div style="font-size:.75rem;color:var(--primary)">${dayPct[bestDay]}% complete</div>
+      </div>
+      <div>
+        <div style="font-size:.7rem;font-weight:700;color:var(--text-l);text-transform:uppercase;margin-bottom:4px">📉 Needs Work</div>
+        <div style="font-size:.9rem;font-weight:600">${new Date(worstDay+'T00:00:00').toLocaleDateString('en-GB',{weekday:'long'})}</div>
+        <div style="font-size:.75rem;color:var(--danger)">${dayPct[worstDay]}% complete</div>
+      </div>
+    </div>
+
+    <!-- Weekly reflection -->
+    <div class="card" style="margin-bottom:0">
+      <div class="card-title">✍️ Weekly Reflection</div>
+      <textarea id="wr-reflection" class="review-textarea" placeholder="What went well this week? What will you improve next week?">${savedReflection||''}</textarea>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+        <button class="btn btn-primary btn-sm" onclick="App.saveWeeklyReview('${weekKey}')">Save Reflection</button>
+        <span id="wr-save-status" style="font-size:.75rem;color:var(--text-l)"></span>
+      </div>
+    </div>
+  `;
+}
+
+// ─── FRIDAY WEEKLY REVIEW REMINDER ────────────────────────────
+function scheduleFridayReminder(){
+  if(Notification.permission !== 'granted') return;
+  const now = new Date();
+  const day = now.getDay(); // 5 = Friday
+  const target = new Date(now);
+  // Next Friday at 8:00 PM
+  const daysUntilFri = (5 - day + 7) % 7 || 7;
+  target.setDate(now.getDate() + daysUntilFri);
+  target.setHours(20, 0, 0, 0);
+  const ms = target - now;
+  setTimeout(() => {
+    new Notification('📅 Weekly Review Time', {
+      body: 'Your week is almost done — take 2 minutes to reflect.',
+      icon: '/icon.svg',
+      tag: 'weekly-review'
+    });
+  }, ms);
+}
 
 // ─── INIT ─────────────────────────────────────────────────────
 (async function init(){
