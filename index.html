@@ -9,7 +9,6 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Life">
-<link rel="apple-touch-icon" href="icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -30,7 +29,7 @@
   --nav-h:68px;--header-h:60px;
 }
 html{font-size:16px;-webkit-text-size-adjust:100%}
-body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100dvh;overflow-x:hidden}
+body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
 button{font-family:inherit;cursor:pointer;border:none;background:none}
 input,textarea,select{font-family:inherit;outline:none}
 a{color:var(--primary-m);text-decoration:none}
@@ -66,7 +65,7 @@ a{color:var(--primary-m);text-decoration:none}
 .pin-error{color:var(--danger);font-size:.82rem;text-align:center;min-height:20px;margin-top:4px}
 
 /* ─── APP SHELL ───────────────────────────────────────── */
-#app{display:flex;flex-direction:column;min-height:100dvh}
+#app{display:flex;flex-direction:column;min-height:100vh}
 .app-header{position:sticky;top:0;z-index:100;height:var(--header-h);background:var(--surface);border-bottom:1px solid var(--border-l);display:flex;align-items:center;padding:0 16px;gap:12px}
 .app-header h1{font-family:var(--font-head);font-size:1.15rem;font-weight:600;flex:1}
 .app-header .hdr-sub{font-size:.75rem;color:var(--text-l);font-family:var(--font-body);font-weight:400}
@@ -95,23 +94,18 @@ section.view.active{display:block}
 
 /* ─── TODAY VIEW ─────────────────────────────────────── */
 .date-header{padding:16px 16px 0;display:flex;flex-direction:column;gap:4px}
-
-/* ─── PRAYER TIMES ───────────────────────────────────── */
+.date-day{font-family:var(--font-head);font-size:1.8rem;font-weight:600;line-height:1;text-align:center}
+.date-full{font-size:.8rem;color:var(--text-m);margin-top:4px;text-align:center}
+.date-header-past .mood-btn,.date-header-past .journal-area,.date-header-past .habit-check{pointer-events:none;opacity:.65}
 .prayer-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:4px}
-.prayer-item{display:flex;flex-direction:column;align-items:center;padding:8px 4px;border-radius:10px;background:var(--surface2);transition:all .2s}
+.prayer-item{display:flex;flex-direction:column;align-items:center;padding:8px 4px;border-radius:10px;background:var(--surface2)}
 .prayer-item.next{background:var(--primary);box-shadow:0 2px 10px rgba(27,67,50,.25)}
-.prayer-item.passed{opacity:.45}
+.prayer-item.passed{opacity:.4}
 .prayer-name{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-l)}
 .prayer-time{font-size:.82rem;font-weight:600;color:var(--text);margin-top:3px}
 .prayer-item.next .prayer-name,.prayer-item.next .prayer-time{color:#fff}
-.prayer-countdown{font-size:.72rem;font-weight:600;color:var(--primary-l);margin-top:6px;text-align:center}
-
-/* ─── HABIT STREAKS ──────────────────────────────────── */
 .streak-pill{font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--accent-l);color:var(--accent);margin-left:auto;flex-shrink:0;white-space:nowrap}
 .streak-pill.hot{background:var(--primary-l)30;color:var(--primary)}
-.streak-pill.zero{display:none}
-
-/* ─── WEEKLY REVIEW ──────────────────────────────────── */
 .week-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .week-nav span{font-size:.85rem;font-weight:600;color:var(--text)}
 .week-day-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:14px}
@@ -127,9 +121,6 @@ section.view.active{display:block}
 .week-dot.today{border:2px solid var(--primary)}
 .review-textarea{width:100%;min-height:80px;padding:10px 12px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:.85rem;resize:vertical;background:var(--bg);color:var(--text);font-family:var(--font-body)}
 .review-textarea:focus{border-color:var(--primary-m);outline:none}
-.date-day{font-family:var(--font-head);font-size:1.8rem;font-weight:600;line-height:1;text-align:center}
-.date-full{font-size:.8rem;color:var(--text-m);margin-top:4px;text-align:center}
-.date-header-past .mood-btn,.date-header-past .journal-area,.date-header-past .habit-check{pointer-events:none;opacity:.65}
 .date-day{font-family:var(--font-head);font-size:1.8rem;font-weight:600;line-height:1}
 .date-full{font-size:.8rem;color:var(--text-m);margin-top:4px}
 .completion-ring{display:flex;align-items:center;gap:14px;margin-top:10px}
@@ -254,7 +245,7 @@ section.view.active{display:block}
 /* ─── MODAL ──────────────────────────────────────────── */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
 .modal-overlay.open{opacity:1;pointer-events:all}
-.modal-box{background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:90dvh;overflow-y:auto;padding:8px 0 env(safe-area-inset-bottom);transform:translateY(20px);transition:transform .25s ease;box-shadow:var(--shadow-lg)}
+.modal-box{background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;padding:8px 0 env(safe-area-inset-bottom);transform:translateY(20px);transition:transform .25s ease;box-shadow:var(--shadow-lg)}
 .modal-overlay.open .modal-box{transform:translateY(0)}
 .modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:10px auto 16px}
 .modal-title{font-family:var(--font-head);font-size:1.1rem;font-weight:600;padding:0 20px 16px}
@@ -288,7 +279,7 @@ section.view.active{display:block}
 
 @media(min-width:480px){
   .modal-overlay{align-items:center}
-  .modal-box{border-radius:20px;max-height:85dvh}
+  .modal-box{border-radius:20px;max-height:85vh}
   .modal-handle{display:none}
 }
 @media(prefers-color-scheme:dark){
@@ -298,8 +289,7 @@ section.view.active{display:block}
 </head>
 <body>
 
-<!-- ═══════════════════════════════════════════════════
-<!-- ═══════════════════════════════════════════════════
+<!-- ═══════════════════════════════════════════════<!-- ═══════════════════════════════════════════════════
   PIN SCREEN
 ═══════════════════════════════════════════════════ -->
 <div id="pin-screen" class="splash-screen hidden">
@@ -384,8 +374,8 @@ section.view.active{display:block}
 
       <!-- Prayer Times -->
       <div class="card" id="prayer-card">
-        <div class="card-title" style="margin-bottom:8px">🕌 Prayer Times <span class="prayer-countdown" id="prayer-countdown" style="display:inline;margin-left:8px;font-family:var(--font-body);font-size:.75rem"></span></div>
-        <div class="prayer-grid" id="prayer-grid"><div style="color:var(--text-l);font-size:.8rem;grid-column:1/-1;text-align:center;padding:8px">Loading prayer times…</div></div>
+        <div class="card-title" style="margin-bottom:8px">🕌 Prayer Times <span id="prayer-countdown" style="font-family:var(--font-body);font-size:.72rem;color:var(--primary-m);font-weight:500;margin-left:6px"></span></div>
+        <div class="prayer-grid" id="prayer-grid"><div style="color:var(--text-l);font-size:.8rem;grid-column:1/-1;text-align:center;padding:8px">Loading...</div></div>
       </div>
 
       <!-- Mood -->
@@ -450,7 +440,7 @@ section.view.active{display:block}
     <section id="view-analytics" class="view">
       <div class="tracker-tabs" style="margin-bottom:0">
         <div class="tracker-tab active" onclick="App.switchAnalyticsTab('stats',this)">📊 Stats</div>
-        <div class="tracker-tab" onclick="App.switchAnalyticsTab('weekly',this)">📅 Weekly Review</div>
+        <div class="tracker-tab" onclick="App.switchAnalyticsTab('weekly',this)">📅 Weekly</div>
       </div>
       <div id="analytics-stats-panel">
         <div class="stat-grid" id="analytics-stats"></div>
@@ -560,7 +550,7 @@ section.view.active{display:block}
 <button class="fab hidden" id="fab" onclick="App.fabAction()">+</button>
 
 <!-- Modal -->
-<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
+<div class="modal-overlay" id="modal-overlay" onclick="App.closeModal(event)">
   <div class="modal-box" id="modal-box">
     <div class="modal-handle"></div>
     <div class="modal-title" id="modal-title"></div>
@@ -596,7 +586,6 @@ function initSB(){
 // ─── STATE ────────────────────────────────────────────────────
 const S = {
   today: new Date().toISOString().split('T')[0],
-  viewDate: new Date().toISOString().split('T')[0], // tracks which day is displayed
   view: 'today',
   trackerTab: 'books',
   noteTab: 'notes',
@@ -617,7 +606,8 @@ const S = {
   pinLen: 4,
   _settingPin: false,
   prayerTimings: null,
-  goodStreaks: {}
+  goodStreaks: {},
+  viewDate: new Date().toISOString().split('T')[0]
 };
 
 // ─── UTILITIES ────────────────────────────────────────────────
@@ -657,28 +647,25 @@ const DB = {
 
   async getCheckin(date){ const {data}=await sb.from('daily_checkins').select('*').eq('date',date).maybeSingle(); return data; },
   async upsertCheckin(date, obj){
-    // Merge new fields into current in-memory state
-    const current = S.checkin || {};
-    S.checkin = { ...current, ...obj, date };
-
-    const payload = {
-      mood:           S.checkin.mood           ?? null,
-      journal:        S.checkin.journal        ?? null,
-      wird_completed: S.checkin.wird_completed ?? false,
-      quran_pages:    S.checkin.quran_pages    ?? 0,
-      current_surah:  S.checkin.current_surah  ?? null,
-      current_juz:    S.checkin.current_juz    ?? null,
-      updated_at:     new Date().toISOString()
+    var current = S.checkin || {};
+    S.checkin = Object.assign({}, current, obj, {date: date});
+    var payload = {
+      mood: S.checkin.mood !== undefined ? S.checkin.mood : null,
+      journal: S.checkin.journal || null,
+      wird_completed: S.checkin.wird_completed || false,
+      quran_pages: S.checkin.quran_pages || 0,
+      current_surah: S.checkin.current_surah || null,
+      current_juz: S.checkin.current_juz || null,
+      updated_at: new Date().toISOString()
     };
-
-    // If row already exists (has id) → UPDATE, else → INSERT
-    if (S.checkin.id) {
-      const { error } = await sb.from('daily_checkins').update(payload).eq('id', S.checkin.id);
-      if (error) { console.error('Checkin update failed:', error); toast('⚠️ Save failed: ' + error.message); }
+    if(S.checkin.id){
+      var r = await sb.from('daily_checkins').update(payload).eq('id', S.checkin.id);
+      if(r.error) console.error('Checkin update failed:', r.error);
     } else {
-      const { data, error } = await sb.from('daily_checkins').insert({ date, ...payload }).select().single();
-      if (error) { console.error('Checkin insert failed:', error); toast('⚠️ Save failed: ' + error.message); }
-      else if (data) S.checkin = { ...S.checkin, id: data.id };
+      var payload2 = Object.assign({date: date}, payload);
+      var r2 = await sb.from('daily_checkins').insert(payload2).select().single();
+      if(r2.error) console.error('Checkin insert failed:', r2.error);
+      else if(r2.data) S.checkin = Object.assign(S.checkin, {id: r2.data.id});
     }
   },
 
@@ -768,87 +755,81 @@ async function renderToday(){
   el('header-actions').innerHTML='';
   el('fab').classList.add('hidden');
 
-  const date = S.viewDate;
-  const isToday = date === S.today;
+  var date = S.viewDate || S.today;
+  var isToday = date === S.today;
 
-  el('today-dayname').textContent = isToday ? 'Today — '+dayName(date) : dayName(date);
+  el('today-dayname').textContent = isToday ? 'Today' : dayName(date);
   el('today-fulldate').textContent = fmtDate(date);
 
-  // Forward arrow — only enabled if not on today
-  el('day-fwd-btn').disabled = isToday;
-  el('day-fwd-btn').style.opacity = isToday ? '0.3' : '1';
+  // Arrow state
+  var fwdBtn = el('day-fwd-btn');
+  if(fwdBtn){ fwdBtn.disabled = isToday; fwdBtn.style.opacity = isToday ? '0.3' : '1'; }
+  var banner = el('past-day-banner');
+  if(banner){ banner.classList.toggle('hidden', isToday); }
+  el('view-today').classList.toggle('date-header-past', !isToday);
 
-  // Past day banner
-  el('past-day-banner').classList.toggle('hidden', isToday);
-
-  // Read-only lock on mood + journal + habits for past days
-  const todaySection = el('view-today');
-  todaySection.classList.toggle('date-header-past', !isToday);
-
-  // Load data in parallel
-  const [checkin, logs, islamicH, regularH, badH] = await Promise.all([
+  const [checkin,logs,islamicH,regularH,badH]=await Promise.all([
     DB.getCheckin(date),
     DB.getHabitLogs(date),
     DB.getHabits('islamic'),
     DB.getHabits('regular'),
     DB.getHabits('bad')
   ]);
+  S.checkin = checkin || {date:date, mood:null, journal:null, wird_completed:false, quran_pages:0, current_surah:null, current_juz:null};
+  S.habits.islamic=islamicH.filter(h=>h.is_active);
+  S.habits.regular=regularH.filter(h=>h.is_active);
+  S.habits.bad=badH.filter(h=>h.is_active);
+  const logMap={};
+  logs.forEach(l=>logMap[l.habit_id]=l.completed);
+  S.habitLogs=logMap;
 
-  S.checkin = checkin || { date, mood: null, journal: null, wird_completed: false, quran_pages: 0, current_surah: null, current_juz: null };
-  S.habits.islamic = islamicH.filter(h => h.is_active);
-  S.habits.regular = regularH.filter(h => h.is_active);
-  S.habits.bad = badH.filter(h => h.is_active);
-  const logMap = {};
-  logs.forEach(l => logMap[l.habit_id] = l.completed);
-  S.habitLogs = logMap;
-
-  // Mood
-  document.querySelectorAll('.mood-btn').forEach(b => {
+  document.querySelectorAll('.mood-btn').forEach(function(b){
     b.classList.toggle('selected', parseInt(b.dataset.mood) === S.checkin.mood);
   });
 
-  // Journal — disable input on past days
-  const ja = el('journal-area');
+  var ja = el('journal-area');
   ja.value = S.checkin.journal || '';
   ja.readOnly = !isToday;
   ja.style.opacity = isToday ? '1' : '0.65';
-  el('journal-save-status').textContent = '';
 
-  // Prayer times (only load on today view, non-blocking)
-  if(isToday) loadPrayerTimes();
+  if(isToday){ loadPrayerTimes(); }
 
-  // Habit streaks (only on today, batch fetch)
-  let streaks = {};
+  var streaks = {};
   if(isToday){
-    const allGoodHabits = [...S.habits.islamic, ...S.habits.regular];
-    streaks = await computeAllGoodStreaks(allGoodHabits.map(h=>h.id));
+    var allGood = S.habits.islamic.concat(S.habits.regular).map(function(h){ return h.id; });
+    streaks = await computeAllGoodStreaks(allGood);
     S.goodStreaks = streaks;
   }
 
-  // Habit lists
   renderHabitList('islamic-habits-list', S.habits.islamic, logMap, isToday, streaks);
   renderHabitList('regular-habits-list', S.habits.regular, logMap, isToday, streaks);
   await renderBadHabits(S.habits.bad, date);
   updateRing();
 }
 
-function renderHabitList(containerId, habits, logMap, interactive=true, streaks={}){
-  const c = el(containerId);
+function renderHabitList(containerId, habits, logMap, interactive, streaks){
+  if(interactive === undefined) interactive = true;
+  if(streaks === undefined) streaks = {};
+  var c = el(containerId);
   if(!habits.length){ c.innerHTML='<div class="empty-state" style="padding:16px"><p>No active habits. Add some in Settings.</p></div>'; return; }
-  c.innerHTML = habits.map(h => {
-    const done = logMap[h.id] || false;
-    const clickAttr = interactive ? `onclick="App.toggleHabit('${h.id}','${containerId}')"` : '';
-    const streak = streaks[h.id] || 0;
-    const pillClass = streak >= 7 ? 'hot' : streak === 0 ? 'zero' : '';
-    const pillLabel = streak >= 2 ? `🔥 ${streak}d` : streak === 1 ? '1d' : '';
-    return `<div class="habit-row${done?' done':''}" id="hr-${h.id}">
-      <div class="habit-check${done?' checked':''}" ${clickAttr} style="${!interactive?'cursor:default':''}">
-        ${svgCheck()}
-      </div>
-      <div class="habit-name">${h.name}</div>
-      ${streak > 0 ? `<div class="streak-pill ${pillClass}">${pillLabel}</div>` : ''}
-    </div>`;
-  }).join('');
+  var html = '';
+  habits.forEach(function(h){
+    var done = logMap[h.id] || false;
+    var streak = streaks[h.id] || 0;
+    var pillClass = streak >= 7 ? 'hot' : '';
+    var pillLabel = streak >= 2 ? ('🔥 ' + streak + 'd') : streak === 1 ? '1d' : '';
+    html += '<div class="habit-row' + (done ? ' done' : '') + '" id="hr-' + h.id + '">';
+    if(interactive){
+      html += '<div class="habit-check' + (done ? ' checked' : '') + '" onclick="App.toggleHabit('' + h.id + '','' + containerId + '')">';
+    } else {
+      html += '<div class="habit-check' + (done ? ' checked' : '') + '" style="cursor:default">';
+    }
+    html += svgCheck() + '</div>';
+    html += '<div class="habit-name">' + h.name + '</div>';
+    if(streak > 0){ html += '<div class="streak-pill ' + pillClass + '">' + pillLabel + '</div>'; }
+    html += '</div>';
+  });
+  c.innerHTML = html;
 }
 
 async function renderBadHabits(habits,date){
@@ -1083,7 +1064,6 @@ async function renderAnalytics(){
   el('header-sub').textContent='Your patterns';
   el('header-actions').innerHTML='';
   el('fab').classList.add('hidden');
-  // Default to stats tab
   el('analytics-stats-panel').classList.remove('hidden');
   el('analytics-weekly-panel').classList.add('hidden');
   await renderAnalyticsStats();
@@ -1103,6 +1083,7 @@ async function renderAnalyticsStats(){
     })()
   ]);
 
+  // Stat cards
   const totalDays=checkins.filter(c=>c.mood).length;
   const MOOD_MAP={1:{e:'😞',l:'Rough'},2:{e:'😕',l:'Meh'},3:{e:'😐',l:'Okay'},4:{e:'😊',l:'Good'},5:{e:'😄',l:'Great'}};
   const avgMood=totalDays?Math.round(checkins.filter(c=>c.mood).reduce((s,c)=>s+(c.mood||0),0)/totalDays):0;
@@ -1115,6 +1096,7 @@ async function renderAnalyticsStats(){
     <div class="stat-box"><div class="sv">${habits30.length?habits30[0].pct+'%':'—'}</div><div class="sl">Best Habit Rate</div></div>
   `;
 
+  // Mood chart
   const last14=[];
   for(let i=13;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);last14.push(d.toISOString().split('T')[0]);}
   const moodMap={};mood14.forEach(m=>moodMap[m.date]=m.mood);
@@ -1129,6 +1111,7 @@ async function renderAnalyticsStats(){
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:1,max:5,ticks:{stepSize:1,callback:v=>['','😞','😕','😐','😊','😄'][v]||v},grid:{color:'rgba(0,0,0,.05)'}},x:{grid:{display:false},ticks:{font:{size:10}}}}}
   });
 
+  // Completion chart
   const compMap={};
   comp14.forEach(l=>{if(!compMap[l.date])compMap[l.date]={done:0,total:0};compMap[l.date].total++;if(l.completed)compMap[l.date].done++;});
   const compData=last14.map(d=>compMap[d]?Math.round(100*compMap[d].done/compMap[d].total):null);
@@ -1141,6 +1124,7 @@ async function renderAnalyticsStats(){
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{callback:v=>v+'%'},grid:{color:'rgba(0,0,0,.05)'}},x:{grid:{display:false},ticks:{font:{size:10}}}}}
   });
 
+  // Habit bars
   el('habit-completion-bars').innerHTML=habits30.slice(0,12).map(h=>`
     <div class="habit-bar-row">
       <div class="habit-bar-name" title="${h.name}">${h.name}</div>
@@ -1149,25 +1133,7 @@ async function renderAnalyticsStats(){
     </div>`).join('');
 }
 
-function renderNotifStatus(){
-  const s = el('notif-status');
-  if(!s) return;
-  if(!('Notification' in window)){
-    s.innerHTML = '❌ Not supported in this browser';
-    return;
-  }
-  const p = Notification.permission;
-  const hasPeriodic = 'periodicSync' in (swReg || {});
-  if(p === 'granted'){
-    s.innerHTML = `✅ <strong>Enabled</strong> — reminders will fire when due${hasPeriodic ? ' (background sync active)' : ' (when app is open or foregrounded)'}`;
-  } else if(p === 'denied'){
-    s.innerHTML = `❌ <strong>Blocked</strong> — go to your browser/phone settings and allow notifications for this site, then tap Enable below`;
-  } else {
-    s.innerHTML = `⚠️ <strong>Not yet enabled</strong> — tap the button below to allow reminders`;
-  }
-}
-
-
+// ─── RENDER: SETTINGS ────────────────────────────────────────
 async function renderSettings(){
   el('header-title').textContent='Settings';
   el('header-sub').textContent='Manage & Configure';
@@ -1190,7 +1156,6 @@ async function renderSettings(){
   renderHabitManager('mgr-islamic',islamicAll,'islamic');
   renderHabitManager('mgr-regular',regularAll,'regular');
   renderHabitManager('mgr-bad',badAll,'bad');
-  renderNotifStatus();
 }
 
 function renderHabitManager(containerId,habits,type){
@@ -1214,14 +1179,27 @@ function openModal(title,bodyHTML,actions=[]){
   el('modal-actions').innerHTML=actions.map(a=>`<button class="btn ${a.cls||'btn-secondary'}" onclick="${a.fn}">${a.label}</button>`).join('');
   el('modal-overlay').classList.add('open');
 }
-function closeModal(){
-  el('modal-overlay').classList.remove('open');
+function closeModal(e){
+  // Close if: called programmatically (no event / no target), OR user clicked the backdrop
+  if(!e||!e.target||e.target===el('modal-overlay')) el('modal-overlay').classList.remove('open');
 }
 
 // ─── APP OBJECT (public API bound to DOM events) ──────────────
 const App = {
   // ── Navigation ──
-  nav(view,el_){
+  stepDay: function(delta){
+    var d = new Date((S.viewDate || S.today) + 'T00:00:00');
+    d.setDate(d.getDate() + delta);
+    var nd = d.toISOString().split('T')[0];
+    if(nd > S.today) return;
+    S.viewDate = nd;
+    renderToday();
+  },
+  goToday: function(){
+    S.viewDate = S.today;
+    renderToday();
+  },
+  nav: function(view,el_){
     document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
     el_.classList.add('active');
     document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
@@ -1234,14 +1212,24 @@ const App = {
     else if(view==='settings') renderSettings();
   },
 
-  switchAnalyticsTab(tab, el_){
-    document.querySelectorAll('#view-analytics .tracker-tab').forEach(t=>t.classList.remove('active'));
+  switchAnalyticsTab: function(tab, el_){
+    document.querySelectorAll('#view-analytics .tracker-tab').forEach(function(t){ t.classList.remove('active'); });
     el_.classList.add('active');
-    el('analytics-stats-panel').classList.toggle('hidden', tab!=='stats');
-    el('analytics-weekly-panel').classList.toggle('hidden', tab!=='weekly');
-    if(tab==='weekly') renderWeeklyReview();
+    el('analytics-stats-panel').classList.toggle('hidden', tab !== 'stats');
+    el('analytics-weekly-panel').classList.toggle('hidden', tab !== 'weekly');
+    if(tab === 'weekly') renderWeeklyReview(0);
     else renderAnalyticsStats();
   },
+
+  saveWeeklyReview: async function(weekKey){
+    var val = el('wr-reflection') ? el('wr-reflection').value.trim() : '';
+    await DB.setSetting('wr_' + weekKey, val);
+    var s = el('wr-save-status');
+    if(s){ s.textContent = 'Saved ✓'; setTimeout(function(){ if(el('wr-save-status')) el('wr-save-status').textContent=''; }, 2000); }
+    toast('Reflection saved ✓');
+  },
+
+  switchTracker(tab,el_){
     document.querySelectorAll('.tracker-tab').forEach(t=>t.classList.remove('active'));
     el_.classList.add('active');
     el('tracker-books').classList.toggle('hidden',tab!=='books');
@@ -1272,6 +1260,8 @@ const App = {
   },
 
   // ── PIN ──
+
+
   pinKey(k){
     const buf=S.pinBuffer;
     if(k==='clear') S.pinBuffer='';
@@ -1288,14 +1278,14 @@ const App = {
       if(S.pinBuffer.length < 4){ el('pin-error').textContent='Use at least 4 digits'; S.pinBuffer=''; return; }
       const hash = await sha256(S.pinBuffer);
       CFG.pinHash = hash;
-      await DB.setSetting('pin_hash', hash).catch(()=>{});
+      await DB.setSetting('pin_hash', hash).catch(function(){});
       S._settingPin = false;
       S.pinBuffer = '';
-      for(let i=0;i<4;i++) el('pd'+i).classList.remove('filled');
-      el('pin-title').textContent = 'Enter PIN';
-      el('pin-subtitle').textContent = 'بسم الله الرحمن الرحيم';
-      el('pin-error').textContent = 'PIN set! Now enter it to continue.';
-      setTimeout(()=>el('pin-error').textContent='',2000);
+      for(var i=0;i<4;i++) el('pd'+i).classList.remove('filled');
+      if(el('pin-title')) el('pin-title').textContent = 'Enter PIN';
+      if(el('pin-subtitle')) el('pin-subtitle').textContent = 'بسم الله الرحمن الرحيم';
+      el('pin-error').textContent = 'PIN set! Enter it to continue.';
+      setTimeout(function(){ el('pin-error').textContent=''; }, 2000);
       return;
     }
     const hash=await sha256(S.pinBuffer);
@@ -1308,8 +1298,8 @@ const App = {
     } else {
       el('pin-error').textContent='Incorrect PIN';
       S.pinBuffer='';
-      for(let i=0;i<4;i++) el('pd'+i).classList.remove('filled');
-      setTimeout(()=>el('pin-error').textContent='',1500);
+      for(var j=0;j<4;j++) el('pd'+j).classList.remove('filled');
+      setTimeout(function(){ el('pin-error').textContent=''; },1500);
     }
   },
 
@@ -1320,47 +1310,31 @@ const App = {
     if(np!==cp){ toast('PINs do not match');return; }
     const hash=await sha256(np);
     CFG.pinHash=hash;
-    await DB.setSetting('pin_hash',hash);
+    await DB.setSetting('pin_hash',hash).catch(function(){});
     el('new-pin').value=''; el('confirm-pin').value='';
     toast('PIN updated ✓');
   },
 
-  logout(){
+  logout: function(){
     sessionStorage.removeItem('auth');
     el('app').classList.add('hidden');
     el('pin-screen').classList.remove('hidden');
     S.pinBuffer='';
-    for(let i=0;i<4;i++) el('pd'+i).classList.remove('filled');
-  },
-
-  // ── Day Navigation ──
-  stepDay(delta){
-    const d = new Date(S.viewDate + 'T00:00:00');
-    d.setDate(d.getDate() + delta);
-    const newDate = d.toISOString().split('T')[0];
-    // Can't go forward past today
-    if(newDate > S.today) return;
-    S.viewDate = newDate;
-    renderToday();
-  },
-
-  goToday(){
-    S.viewDate = S.today;
-    renderToday();
+    for(var i=0;i<4;i++) el('pd'+i).classList.remove('filled');
   },
 
   // ── Today ──
   async setMood(m){
-    if(S.viewDate !== S.today) return; // read-only on past days
-    document.querySelectorAll('.mood-btn').forEach(b=>b.classList.toggle('selected',parseInt(b.dataset.mood)===m));
-    el('journal-save-status').textContent='Saving…';
-    await DB.upsertCheckin(S.viewDate,{mood:m});
-    el('journal-save-status').textContent='Saved ✓';
-    setTimeout(()=>el('journal-save-status').textContent='',1800);
+    if(S.viewDate && S.viewDate !== S.today) return;
+    document.querySelectorAll('.mood-btn').forEach(function(b){ b.classList.toggle('selected', parseInt(b.dataset.mood) === m); });
+    el('journal-save-status').textContent = 'Saving...';
+    await DB.upsertCheckin(S.viewDate || S.today, {mood: m});
+    el('journal-save-status').textContent = 'Saved ✓';
+    setTimeout(function(){ el('journal-save-status').textContent = ''; }, 1800);
   },
 
   async toggleHabit(habitId,listId){
-    if(S.viewDate !== S.today) return; // read-only past days
+    if(S.viewDate && S.viewDate !== S.today) return;
     const cur=S.habitLogs[habitId]||false;
     const next=!cur;
     S.habitLogs[habitId]=next;
@@ -1371,7 +1345,7 @@ const App = {
       chk.classList.toggle('checked',next);
     }
     updateRing();
-    await DB.upsertHabitLog(habitId,S.viewDate,next);
+    await DB.upsertHabitLog(habitId, S.viewDate || S.today, next);
   },
 
   async logSlip(habitId){
@@ -1464,7 +1438,7 @@ const App = {
   // ── Quran / Wird ──
   async toggleWird(){
     const cur=S.quranToday?.wird_completed||false;
-    await DB.upsertCheckin(S.viewDate,{wird_completed:!cur});
+    await DB.upsertCheckin(S.viewDate || S.today, {wird_completed:!cur});
     if(!S.quranToday) S.quranToday={};
     S.quranToday.wird_completed=!cur;
     el('wird-check').classList.toggle('done',!cur);
@@ -1476,7 +1450,7 @@ const App = {
     const pages=parseInt(el('q-pages').value)||0;
     const surah=el('q-surah').value.trim();
     const juz=parseInt(el('q-juz').value)||null;
-    await DB.upsertCheckin(S.viewDate,{quran_pages:pages,current_surah:surah,current_juz:juz});
+    await DB.upsertCheckin(S.viewDate || S.today, {quran_pages:pages, current_surah:surah, current_juz:juz});
     await renderQuran();
     toast('Quran tracker updated ✓');
   },
@@ -1681,27 +1655,7 @@ const App = {
     toast('CSV exported ✓');
   },
 
-  async requestNotifications(){
-    if(!('Notification' in window)){
-      toast('Notifications not supported in this browser');
-      return;
-    }
-    const result = await Notification.requestPermission();
-    if(result === 'granted'){
-      await setupNotifications();
-      toast('Notifications enabled ✓');
-    } else {
-      toast('Permission denied — enable in browser settings');
-    }
-    renderNotifStatus();
-  },
-  async saveWeeklyReview(weekKey){
-    const val = el('wr-reflection')?.value?.trim() || '';
-    await DB.setSetting('wr_'+weekKey, val);
-    el('wr-save-status').textContent='Saved ✓';
-    setTimeout(()=>{ if(el('wr-save-status')) el('wr-save-status').textContent=''; },2000);
-  },
-
+  // ── Utility ──
   closeModal(){ closeModal(); },
 
   confirm(msg){
@@ -1717,186 +1671,88 @@ const App = {
 };
 
 // ─── JOURNAL AUTO-SAVE ────────────────────────────────────────
-const journalSave=debounce(async(val)=>{
-  if(S.viewDate !== S.today) return; // read-only on past days
-  el('journal-save-status').textContent='Saving…';
-  await DB.upsertCheckin(S.viewDate,{journal:val});
+const journalSave=debounce(async function(val){
+  if(S.viewDate && S.viewDate !== S.today) return;
+  el('journal-save-status').textContent='Saving...';
+  await DB.upsertCheckin(S.viewDate || S.today, {journal: val});
   el('journal-save-status').textContent='Saved ✓';
-  setTimeout(()=>el('journal-save-status').textContent='',2000);
-},900);
+  setTimeout(function(){ el('journal-save-status').textContent=''; }, 2000);
+}, 900);
 document.getElementById('journal-area').addEventListener('input',e=>journalSave(e.target.value));
 
 // ─── PIN AUTO-SUBMIT ──────────────────────────────────────────
 // Auto-checks when PIN reaches expected length
-// PIN auto-submits at 4 digits (handled inside pinKey already)
+// PIN auto-submits at 4 digits (handled inside pinKey)
 
 // ─── SERVICE WORKER ───────────────────────────────────────────
-// ─── SERVICE WORKER + NOTIFICATIONS ──────────────────────────
-let swReg = null;
-
-async function initSW() {
-  if (!('serviceWorker' in navigator)) return;
-  try {
-    swReg = await navigator.serviceWorker.register('sw.js');
-    // Send Supabase credentials to SW so it can query reminders in background
-    sendCredentialsToSW();
-  } catch(e) { console.warn('SW registration failed', e); }
-}
-
-function sendCredentialsToSW() {
-  if (!swReg || !CFG.url || !CFG.key) return;
-  const target = swReg.active || swReg.installing || swReg.waiting;
-  if (target) {
-    target.postMessage({ type: 'SB_CREDS', url: CFG.url, key: CFG.key });
-  }
-}
-
-async function requestNotificationPermission() {
-  if (!('Notification' in window)) return false;
-  if (Notification.permission === 'granted') return true;
-  if (Notification.permission === 'denied') return false;
-  const result = await Notification.requestPermission();
-  return result === 'granted';
-}
-
-async function registerPeriodicSync() {
-  if (!swReg) return;
-  try {
-    const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
-    if (status.state === 'granted') {
-      await swReg.periodicSync.register('check-reminders', {
-        minInterval: 15 * 60 * 1000 // every 15 minutes
-      });
-    }
-  } catch(e) {
-    // periodicSync not supported — silent fallback to in-app check
-  }
-}
-
-async function checkDueRemindersNow() {
-  // In-app check: fires every time app is opened / brought to foreground
-  if (Notification.permission !== 'granted') return;
-  if (!sb) return;
-  const now = new Date().toISOString();
-  try {
-    const { data: due } = await sb
-      .from('notes')
-      .select('id,content,reminder_date')
-      .eq('is_reminder', true)
-      .eq('completed', false)
-      .lte('reminder_date', now);
-    if (!due || !due.length) return;
-    for (const note of due) {
-      const reg = swReg || await navigator.serviceWorker.ready;
-      await reg.showNotification('⏰ Reminder', {
-        body: note.content,
-        icon: '/icon-192.png',
-        badge: '/icon-192.png',
-        tag: `reminder-${note.id}`,
-        renotify: false,
-        data: { noteId: note.id },
-        actions: [
-          { action: 'done', title: '✅ Mark Done' },
-          { action: 'dismiss', title: 'Dismiss' }
-        ]
-      });
-    }
-  } catch(e) { console.warn('Reminder check failed', e); }
-}
-
-async function setupNotifications() {
-  const granted = await requestNotificationPermission();
-  if (!granted) return;
-  sendCredentialsToSW();
-  await registerPeriodicSync();
-  await checkDueRemindersNow();
-  scheduleFridayReminder();
-}
-
-// Re-check when app comes back to foreground
-document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && sessionStorage.getItem('auth') === '1') {
-    checkDueRemindersNow();
-  }
-});
-
-initSW();
 
 // ─── PRAYER TIMES ────────────────────────────────────────────
-const PRAYERS = ['Fajr','Dhuhr','Asr','Maghrib','Isha'];
-const SHARJAH = { lat: 25.3463, lng: 55.4209, method: 4 }; // Umm Al-Qura
-let prayerTimers = [];
-let countdownInterval = null;
+var PRAYERS = ['Fajr','Dhuhr','Asr','Maghrib','Isha'];
+var SHARJAH_LAT = 25.3463, SHARJAH_LNG = 55.4209, PRAYER_METHOD = 4;
+var prayerTimers = [];
+var countdownInterval = null;
 
 async function loadPrayerTimes(){
   try {
-    const cached = sessionStorage.getItem('prayer_'+S.today);
-    let timings;
-    if(cached){
-      timings = JSON.parse(cached);
-    } else {
-      const res = await fetch(
-        `https://api.aladhan.com/v1/timings/${S.today}?latitude=${SHARJAH.lat}&longitude=${SHARJAH.lng}&method=${SHARJAH.method}`
-      );
-      const json = await res.json();
+    var cached = sessionStorage.getItem('prayer_' + S.today);
+    var timings;
+    if(cached){ timings = JSON.parse(cached); }
+    else {
+      var res = await fetch('https://api.aladhan.com/v1/timings/' + S.today + '?latitude=' + SHARJAH_LAT + '&longitude=' + SHARJAH_LNG + '&method=' + PRAYER_METHOD);
+      var json = await res.json();
       timings = json.data.timings;
-      sessionStorage.setItem('prayer_'+S.today, JSON.stringify(timings));
+      sessionStorage.setItem('prayer_' + S.today, JSON.stringify(timings));
     }
     S.prayerTimings = timings;
     renderPrayerCard(timings);
     schedulePrayerNotifications(timings);
     startPrayerCountdown(timings);
-  } catch(e) {
-    el('prayer-grid').innerHTML = '<div style="color:var(--text-l);font-size:.8rem;grid-column:1/-1;text-align:center;padding:8px">Prayer times unavailable offline</div>';
+  } catch(e){
+    var g = el('prayer-grid');
+    if(g) g.innerHTML = '<div style="color:var(--text-l);font-size:.8rem;grid-column:1/-1;text-align:center;padding:8px">Unavailable offline</div>';
   }
 }
 
-function parsePrayerTime(timeStr, dateStr){
-  const [h,m] = timeStr.split(':').map(Number);
-  const d = new Date(dateStr + 'T00:00:00');
-  d.setHours(h, m, 0, 0);
+function parsePrayerTime(str, dateStr){
+  var parts = str.split(':');
+  var d = new Date(dateStr + 'T00:00:00');
+  d.setHours(parseInt(parts[0]), parseInt(parts[1]), 0, 0);
   return d;
 }
 
 function renderPrayerCard(timings){
-  const now = new Date();
-  let nextIdx = -1;
-  const times = PRAYERS.map(p => ({
-    name: p,
-    time: timings[p],
-    dt: parsePrayerTime(timings[p], S.today)
-  }));
-  for(let i=0; i<times.length; i++){
-    if(times[i].dt > now){ nextIdx = i; break; }
-  }
-
-  el('prayer-grid').innerHTML = times.map((p, i) => {
-    const isNext = i === nextIdx;
-    const passed = nextIdx === -1 ? true : i < nextIdx;
-    const fmt = p.dt.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-    return `<div class="prayer-item${isNext?' next':''}${passed?' passed':''}">
-      <div class="prayer-name">${p.name}</div>
-      <div class="prayer-time">${fmt}</div>
-    </div>`;
-  }).join('');
+  var now = new Date();
+  var times = PRAYERS.map(function(p){ return {name:p, dt:parsePrayerTime(timings[p], S.today)}; });
+  var nextIdx = -1;
+  for(var i=0; i<times.length; i++){ if(times[i].dt > now){ nextIdx = i; break; } }
+  var g = el('prayer-grid');
+  if(!g) return;
+  var html = '';
+  times.forEach(function(p, i){
+    var isNext = i === nextIdx;
+    var passed = nextIdx === -1 ? true : i < nextIdx;
+    var fmt = p.dt.toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'});
+    html += '<div class="prayer-item' + (isNext?' next':'') + (passed?' passed':'') + '">';
+    html += '<div class="prayer-name">' + p.name + '</div>';
+    html += '<div class="prayer-time">' + fmt + '</div>';
+    html += '</div>';
+  });
+  g.innerHTML = html;
 }
 
 function startPrayerCountdown(timings){
   if(countdownInterval) clearInterval(countdownInterval);
   function tick(){
-    const now = new Date();
-    const el_cd = el('prayer-countdown');
-    if(!el_cd) { clearInterval(countdownInterval); return; }
-    const times = PRAYERS.map(p => parsePrayerTime(timings[p], S.today));
-    const next = times.find(t => t > now);
-    if(!next){ el_cd.textContent = '· All prayers done ✓'; return; }
-    const diff = Math.floor((next - now) / 1000);
-    const h = Math.floor(diff/3600);
-    const m = Math.floor((diff%3600)/60);
-    const s = diff % 60;
-    const label = PRAYERS[times.indexOf(next)];
-    el_cd.textContent = `· ${label} in ${h>0?h+'h ':''}${m}m ${s}s`;
-    // Update prayer card highlighting every minute
+    var cd = el('prayer-countdown');
+    if(!cd){ clearInterval(countdownInterval); return; }
+    var now = new Date();
+    var times = PRAYERS.map(function(p){ return {name:p, dt:parsePrayerTime(timings[p], S.today)}; });
+    var next = null;
+    for(var i=0; i<times.length; i++){ if(times[i].dt > now){ next = times[i]; break; } }
+    if(!next){ cd.textContent = '· All done ✓'; return; }
+    var diff = Math.floor((next.dt - now) / 1000);
+    var h = Math.floor(diff/3600), m = Math.floor((diff%3600)/60), s = diff%60;
+    cd.textContent = '· ' + next.name + ' in ' + (h>0?h+'h ':'') + m + 'm ' + s + 's';
     if(s === 0) renderPrayerCard(timings);
   }
   tick();
@@ -1905,287 +1761,247 @@ function startPrayerCountdown(timings){
 
 async function schedulePrayerNotifications(timings){
   if(Notification.permission !== 'granted') return;
-  // Clear previous prayer timers
-  prayerTimers.forEach(t => clearTimeout(t));
+  prayerTimers.forEach(function(t){ clearTimeout(t); });
   prayerTimers = [];
-
-  const now = new Date();
-  PRAYERS.forEach(prayer => {
-    const prayerDt = parsePrayerTime(timings[prayer], S.today);
-
-    // 1. 5 min BEFORE — "Prayer soon"
-    const before5 = new Date(prayerDt.getTime() - 5*60*1000);
-    if(before5 > now){
-      const ms = before5 - now;
-      prayerTimers.push(setTimeout(() => {
-        new Notification(`🕌 ${prayer} in 5 minutes`, {
-          body: 'Time to prepare for prayer.',
-          icon: '/icon.svg',
-          tag: `prayer-before-${prayer}`,
-          silent: false
-        });
-      }, ms));
-    }
-
-    // 2. AT prayer time — Adhan
-    if(prayerDt > now){
-      const ms = prayerDt - now;
-      prayerTimers.push(setTimeout(() => {
-        new Notification(`🕌 ${prayer} — Time to pray`, {
-          body: 'الله أكبر · حي على الصلاة',
-          icon: '/icon.svg',
-          tag: `prayer-athan-${prayer}`,
-          silent: false
-        });
-        if(S.view === 'today') renderPrayerCard(S.prayerTimings);
-      }, ms));
-    }
-
-    // 3. 10 min AFTER — "10 min remaining for Sunnah"
-    const after10 = new Date(prayerDt.getTime() + 10*60*1000);
-    if(after10 > now){
-      const ms = after10 - now;
-      prayerTimers.push(setTimeout(() => {
-        new Notification(`🕌 ${prayer} — Sunnah reminder`, {
-          body: '10 minutes have passed. Don\'t miss the Sunnah prayers.',
-          icon: '/icon.svg',
-          tag: `prayer-sunnah-${prayer}`,
-          silent: false
-        });
-      }, ms));
-    }
+  var now = new Date();
+  PRAYERS.forEach(function(prayer){
+    var dt = parsePrayerTime(timings[prayer], S.today);
+    var b5 = new Date(dt.getTime() - 5*60*1000);
+    if(b5 > now) prayerTimers.push(setTimeout(function(){
+      new Notification('🕌 ' + prayer + ' in 5 minutes', {body:'Time to prepare.', icon:'/icon.svg', tag:'prayer-before-'+prayer});
+    }, b5 - now));
+    if(dt > now) prayerTimers.push(setTimeout(function(){
+      new Notification('🕌 ' + prayer, {body:'الله أكبر · حي على الصلاة', icon:'/icon.svg', tag:'prayer-athan-'+prayer});
+      if(S.view === 'today' && S.prayerTimings) renderPrayerCard(S.prayerTimings);
+    }, dt - now));
+    var a10 = new Date(dt.getTime() + 10*60*1000);
+    if(a10 > now) prayerTimers.push(setTimeout(function(){
+      new Notification('🕌 ' + prayer + ' — Sunnah reminder', {body:"10 minutes passed. Don't miss the Sunnah prayers.", icon:'/icon.svg', tag:'prayer-sunnah-'+prayer});
+    }, a10 - now));
   });
 }
 
-// ─── HABIT STREAKS (GOOD HABITS) ──────────────────────────────
+// ─── HABIT STREAKS ─────────────────────────────────────────────
 async function computeAllGoodStreaks(habitIds){
   if(!habitIds.length) return {};
-  // Fetch last 90 days of logs for all habits in ONE query
-  const from = new Date();
-  from.setDate(from.getDate() - 89);
-  const fromStr = from.toISOString().split('T')[0];
-  const { data: logs } = await sb
-    .from('habit_logs')
-    .select('habit_id, date, completed')
-    .in('habit_id', habitIds)
-    .gte('date', fromStr)
-    .eq('completed', true)
-    .order('date', {ascending: false});
-
-  // Group by habit
-  const byHabit = {};
-  habitIds.forEach(id => byHabit[id] = new Set());
-  (logs||[]).forEach(l => byHabit[l.habit_id]?.add(l.date));
-
-  // Compute streak per habit
-  const streaks = {};
-  habitIds.forEach(id => {
-    const doneSet = byHabit[id];
-    let streak = 0;
-    const d = new Date(S.today + 'T00:00:00');
-    while(true){
-      const ds = d.toISOString().split('T')[0];
-      if(!doneSet.has(ds)) break;
-      streak++;
-      d.setDate(d.getDate() - 1);
-      if(streak > 90) break;
+  var from = new Date(); from.setDate(from.getDate()-89);
+  var fromStr = from.toISOString().split('T')[0];
+  var r = await sb.from('habit_logs').select('habit_id,date,completed')
+    .in('habit_id', habitIds).gte('date', fromStr).eq('completed', true).order('date', {ascending:false});
+  var byHabit = {};
+  habitIds.forEach(function(id){ byHabit[id] = {}; });
+  (r.data||[]).forEach(function(l){ if(byHabit[l.habit_id]) byHabit[l.habit_id][l.date] = true; });
+  var streaks = {};
+  habitIds.forEach(function(id){
+    var doneSet = byHabit[id];
+    var streak = 0;
+    var d = new Date(S.today + 'T00:00:00');
+    while(streak < 90){
+      var ds = d.toISOString().split('T')[0];
+      if(!doneSet[ds]) break;
+      streak++; d.setDate(d.getDate()-1);
     }
     streaks[id] = streak;
   });
   return streaks;
 }
 
-// ─── WEEKLY REVIEW ────────────────────────────────────────────
-function getWeekBounds(offset=0){
-  // Week = Saturday → Friday (Islamic week)
-  const now = new Date();
-  const day = now.getDay(); // 0=Sun … 6=Sat
-  // Days since last Saturday
-  const sinceSat = (day + 1) % 7;
-  const sat = new Date(now);
+// ─── WEEKLY REVIEW ─────────────────────────────────────────────
+function getWeekBounds(offset){
+  if(offset === undefined) offset = 0;
+  var now = new Date();
+  var day = now.getDay();
+  var sinceSat = (day + 1) % 7;
+  var sat = new Date(now);
   sat.setDate(now.getDate() - sinceSat + (offset * 7));
   sat.setHours(0,0,0,0);
-  const fri = new Date(sat);
-  fri.setDate(sat.getDate() + 6);
-  return { start: sat, end: fri };
+  var fri = new Date(sat); fri.setDate(sat.getDate()+6);
+  return {start:sat, end:fri};
 }
 
 function dateRange(start, end){
-  const dates = [];
-  const d = new Date(start);
+  var dates = []; var d = new Date(start);
   while(d <= end){ dates.push(d.toISOString().split('T')[0]); d.setDate(d.getDate()+1); }
   return dates;
 }
 
-async function renderWeeklyReview(offset=0){
-  const panel = el('analytics-weekly-panel');
-  panel.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-l)">Loading…</div>';
-
-  const { start, end } = getWeekBounds(offset);
-  const dates = dateRange(start, end);
-  const weekKey = start.toISOString().split('T')[0];
-  const DAY_LABELS = ['Sat','Sun','Mon','Tue','Wed','Thu','Fri'];
-  const MOOD_EMOJIS = {1:'😞',2:'😕',3:'😐',4:'😊',5:'😄'};
-
-  // Fetch all data for this week
-  const [checkins, logs, habits, savedReflection] = await Promise.all([
-    (async()=>{ const {data}=await sb.from('daily_checkins').select('date,mood,journal').in('date', dates); return data||[]; })(),
-    (async()=>{ const {data}=await sb.from('habit_logs').select('habit_id,date,completed').in('date', dates); return data||[]; })(),
-    (async()=>{ const {data}=await sb.from('habits').select('id,name,type').in('type',['islamic','regular']).eq('is_active',true).order('sort_order'); return data||[]; })(),
+async function renderWeeklyReview(offset){
+  if(offset === undefined) offset = 0;
+  var panel = el('analytics-weekly-panel');
+  panel.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-l)">Loading...</div>';
+  var bounds = getWeekBounds(offset);
+  var start = bounds.start, end = bounds.end;
+  var dates = dateRange(start, end);
+  var weekKey = start.toISOString().split('T')[0];
+  var DAY_LABELS = ['Sat','Sun','Mon','Tue','Wed','Thu','Fri'];
+  var MOOD_EMOJIS = {1:'😞',2:'😕',3:'😐',4:'😊',5:'😄'};
+  var results = await Promise.all([
+    (async function(){ var r=await sb.from('daily_checkins').select('date,mood').in('date',dates); return r.data||[]; })(),
+    (async function(){ var r=await sb.from('habit_logs').select('habit_id,date,completed').in('date',dates); return r.data||[]; })(),
+    (async function(){ var r=await sb.from('habits').select('id,name').in('type',['islamic','regular']).eq('is_active',true).order('sort_order'); return r.data||[]; })(),
     DB.getSetting('wr_'+weekKey)
   ]);
-
-  const checkinMap = {};
-  checkins.forEach(c => checkinMap[c.date] = c);
-
-  const logMap = {}; // logMap[habit_id][date] = completed
-  logs.forEach(l => {
-    if(!logMap[l.habit_id]) logMap[l.habit_id] = {};
-    logMap[l.habit_id][l.date] = l.completed;
+  var checkins=results[0], logs=results[1], habits=results[2], savedReflection=results[3];
+  var checkinMap={};
+  checkins.forEach(function(c){ checkinMap[c.date]=c; });
+  var logMap={};
+  logs.forEach(function(l){ if(!logMap[l.habit_id]) logMap[l.habit_id]={}; logMap[l.habit_id][l.date]=l.completed; });
+  var dayPct={};
+  dates.forEach(function(d){
+    var total=habits.length;
+    var done=habits.filter(function(h){ return logMap[h.id]&&logMap[h.id][d]; }).length;
+    dayPct[d]=total?Math.round(100*done/total):0;
   });
-
-  // Completion % per day
-  const dayPct = {};
-  dates.forEach(d => {
-    const total = habits.length;
-    const done = habits.filter(h => logMap[h.id]?.[d]).length;
-    dayPct[d] = total ? Math.round(100*done/total) : 0;
+  var weekDone=habits.reduce(function(sum,h){ return sum+dates.filter(function(d){ return logMap[h.id]&&logMap[h.id][d]; }).length; },0);
+  var weekTotal=habits.length*7;
+  var weekPct=weekTotal?Math.round(100*weekDone/weekTotal):0;
+  var moods=dates.map(function(d){ return checkinMap[d]?checkinMap[d].mood:null; }).filter(Boolean);
+  var avgMood=moods.length?Math.round(moods.reduce(function(s,m){ return s+m; },0)/moods.length):0;
+  var bestDay=dates[0], worstDay=dates[0];
+  dates.forEach(function(d){ if(dayPct[d]>=dayPct[bestDay]) bestDay=d; if(dayPct[d]<=dayPct[worstDay]) worstDay=d; });
+  var weekLabel=start.toLocaleDateString('en-GB',{month:'short',day:'numeric'})+' – '+end.toLocaleDateString('en-GB',{month:'short',day:'numeric',year:'numeric'});
+  var today=S.today, isCurrentWeek=offset===0;
+  var dayGridHTML='';
+  dates.forEach(function(d,i){
+    var mood=checkinMap[d]?checkinMap[d].mood:null;
+    var pct=dayPct[d], isToday=d===today;
+    var pctColor=pct>=80?'var(--primary)':pct>=50?'var(--accent)':'var(--danger)';
+    dayGridHTML+='<div class="week-day">';
+    dayGridHTML+='<div class="week-day-label" style="'+(isToday?'color:var(--primary);font-weight:800':'')+'">'+ DAY_LABELS[i]+'</div>';
+    dayGridHTML+='<div class="week-day-mood" style="'+(isToday?'border:2px solid var(--primary)':'')+'">'+(mood?MOOD_EMOJIS[mood]:'·')+'</div>';
+    dayGridHTML+='<div class="week-day-pct" style="color:'+pctColor+'">'+pct+'%</div>';
+    dayGridHTML+='</div>';
   });
-
-  // Overall week stats
-  const weekDone = habits.reduce((sum,h) => sum + dates.filter(d=>logMap[h.id]?.[d]).length, 0);
-  const weekTotal = habits.length * 7;
-  const weekPct = weekTotal ? Math.round(100*weekDone/weekTotal) : 0;
-  const moods = dates.map(d=>checkinMap[d]?.mood).filter(Boolean);
-  const avgMood = moods.length ? Math.round(moods.reduce((s,m)=>s+m,0)/moods.length) : 0;
-  const bestDay = dates.reduce((best,d) => dayPct[d]>=(dayPct[best]||0)?d:best, dates[0]);
-  const worstDay = dates.reduce((worst,d) => dayPct[d]<=(dayPct[worst]??100)?d:worst, dates[0]);
-
-  // Week label
-  const weekLabel = `${start.toLocaleDateString('en-GB',{month:'short',day:'numeric'})} – ${end.toLocaleDateString('en-GB',{month:'short',day:'numeric',year:'numeric'})}`;
-  const isCurrentWeek = offset === 0;
-  const today = S.today;
-
-  panel.innerHTML = `
-    <div class="card">
-      <div class="week-nav">
-        <button onclick="renderWeeklyReview(${offset-1})" style="padding:6px 10px;border-radius:8px;background:var(--surface2);font-size:.8rem">‹ Prev</button>
-        <span>${weekLabel}</span>
-        <button onclick="renderWeeklyReview(${offset+1})" style="padding:6px 10px;border-radius:8px;background:var(--surface2);font-size:.8rem;opacity:${isCurrentWeek?.3:1}" ${isCurrentWeek?'disabled':''}>Next ›</button>
-      </div>
-
-      <!-- Day grid -->
-      <div class="week-day-grid">
-        ${dates.map((d,i)=>{
-          const mood = checkinMap[d]?.mood;
-          const pct = dayPct[d];
-          const isToday = d === today;
-          return `<div class="week-day">
-            <div class="week-day-label" style="${isToday?'color:var(--primary);font-weight:800':''}">${DAY_LABELS[i]}</div>
-            <div class="week-day-mood" style="${isToday?'border:2px solid var(--primary)':''}">${mood?MOOD_EMOJIS[mood]:'·'}</div>
-            <div class="week-day-pct" style="${pct>=80?'color:var(--primary)':pct>=50?'color:var(--accent)':'color:var(--danger)'}">${pct}%</div>
-          </div>`;
-        }).join('')}
-      </div>
-
-      <!-- Week stats row -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
-        <div style="text-align:center;background:var(--surface2);border-radius:10px;padding:10px">
-          <div style="font-size:1.3rem;font-weight:700;color:var(--primary)">${weekPct}%</div>
-          <div style="font-size:.65rem;color:var(--text-l);margin-top:2px">Week Score</div>
-        </div>
-        <div style="text-align:center;background:var(--surface2);border-radius:10px;padding:10px">
-          <div style="font-size:1.3rem">${avgMood?MOOD_EMOJIS[avgMood]:'—'}</div>
-          <div style="font-size:.65rem;color:var(--text-l);margin-top:2px">Avg Mood</div>
-        </div>
-        <div style="text-align:center;background:var(--surface2);border-radius:10px;padding:10px">
-          <div style="font-size:1rem;font-weight:700;color:var(--primary)">${weekDone}/${weekTotal}</div>
-          <div style="font-size:.65rem;color:var(--text-l);margin-top:2px">Habits Done</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Per-habit dots -->
-    <div class="card">
-      <div class="card-title">Habit Breakdown</div>
-      ${habits.map(h=>`
-        <div class="week-habit-row">
-          <div class="week-habit-name" title="${h.name}">${h.name}</div>
-          <div class="week-habit-dots">
-            ${dates.map(d=>{
-              const done = logMap[h.id]?.[d];
-              const isTd = d===today;
-              return `<div class="week-dot${done?' done':''}${isTd?' today':''}" title="${d}"></div>`;
-            }).join('')}
-          </div>
-        </div>`).join('')}
-    </div>
-
-    <!-- Best/Worst -->
-    <div class="card" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div>
-        <div style="font-size:.7rem;font-weight:700;color:var(--text-l);text-transform:uppercase;margin-bottom:4px">🏆 Best Day</div>
-        <div style="font-size:.9rem;font-weight:600">${new Date(bestDay+'T00:00:00').toLocaleDateString('en-GB',{weekday:'long'})}</div>
-        <div style="font-size:.75rem;color:var(--primary)">${dayPct[bestDay]}% complete</div>
-      </div>
-      <div>
-        <div style="font-size:.7rem;font-weight:700;color:var(--text-l);text-transform:uppercase;margin-bottom:4px">📉 Needs Work</div>
-        <div style="font-size:.9rem;font-weight:600">${new Date(worstDay+'T00:00:00').toLocaleDateString('en-GB',{weekday:'long'})}</div>
-        <div style="font-size:.75rem;color:var(--danger)">${dayPct[worstDay]}% complete</div>
-      </div>
-    </div>
-
-    <!-- Weekly reflection -->
-    <div class="card" style="margin-bottom:0">
-      <div class="card-title">✍️ Weekly Reflection</div>
-      <textarea id="wr-reflection" class="review-textarea" placeholder="What went well this week? What will you improve next week?">${savedReflection||''}</textarea>
-      <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
-        <button class="btn btn-primary btn-sm" onclick="App.saveWeeklyReview('${weekKey}')">Save Reflection</button>
-        <span id="wr-save-status" style="font-size:.75rem;color:var(--text-l)"></span>
-      </div>
-    </div>
-  `;
+  var habitHTML='';
+  habits.forEach(function(h){
+    var dots='';
+    dates.forEach(function(d){ var done=logMap[h.id]&&logMap[h.id][d], isTd=d===today; dots+='<div class="week-dot'+(done?' done':'')+(isTd?' today':'')+'" title="'+d+'"></div>'; });
+    habitHTML+='<div class="week-habit-row"><div class="week-habit-name" title="'+h.name+'">'+h.name+'</div><div class="week-habit-dots">'+dots+'</div></div>';
+  });
+  var html='';
+  html+='<div class="card"><div class="week-nav">';
+  html+='<button onclick="renderWeeklyReview('+(offset-1)+')" style="padding:6px 10px;border-radius:8px;background:var(--surface2);font-size:.8rem">‹ Prev</button>';
+  html+='<span>'+weekLabel+'</span>';
+  html+='<button onclick="renderWeeklyReview('+(offset+1)+')" style="padding:6px 10px;border-radius:8px;background:var(--surface2);font-size:.8rem;opacity:'+(isCurrentWeek?'0.3':'1')+'" '+(isCurrentWeek?'disabled':'')+'>Next ›</button>';
+  html+='</div><div class="week-day-grid">'+dayGridHTML+'</div>';
+  html+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">';
+  html+='<div style="text-align:center;background:var(--surface2);border-radius:10px;padding:10px"><div style="font-size:1.3rem;font-weight:700;color:var(--primary)">'+weekPct+'%</div><div style="font-size:.65rem;color:var(--text-l);margin-top:2px">Week Score</div></div>';
+  html+='<div style="text-align:center;background:var(--surface2);border-radius:10px;padding:10px"><div style="font-size:1.3rem">'+(avgMood?MOOD_EMOJIS[avgMood]:'—')+'</div><div style="font-size:.65rem;color:var(--text-l);margin-top:2px">Avg Mood</div></div>';
+  html+='<div style="text-align:center;background:var(--surface2);border-radius:10px;padding:10px"><div style="font-size:1rem;font-weight:700;color:var(--primary)">'+weekDone+'/'+weekTotal+'</div><div style="font-size:.65rem;color:var(--text-l);margin-top:2px">Habits Done</div></div>';
+  html+='</div></div>';
+  html+='<div class="card"><div class="card-title">Habit Breakdown</div>'+habitHTML+'</div>';
+  var bestName=new Date(bestDay+'T00:00:00').toLocaleDateString('en-GB',{weekday:'long'});
+  var worstName=new Date(worstDay+'T00:00:00').toLocaleDateString('en-GB',{weekday:'long'});
+  html+='<div class="card" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+  html+='<div><div style="font-size:.7rem;font-weight:700;color:var(--text-l);text-transform:uppercase;margin-bottom:4px">Best Day</div><div style="font-size:.9rem;font-weight:600">'+bestName+'</div><div style="font-size:.75rem;color:var(--primary)">'+dayPct[bestDay]+'% complete</div></div>';
+  html+='<div><div style="font-size:.7rem;font-weight:700;color:var(--text-l);text-transform:uppercase;margin-bottom:4px">Needs Work</div><div style="font-size:.9rem;font-weight:600">'+worstName+'</div><div style="font-size:.75rem;color:var(--danger)">'+dayPct[worstDay]+'% complete</div></div>';
+  html+='</div>';
+  html+='<div class="card" style="margin-bottom:0"><div class="card-title">Weekly Reflection</div>';
+  html+='<textarea id="wr-reflection" class="review-textarea" placeholder="What went well? What will you improve?">'+(savedReflection||'')+'</textarea>';
+  html+='<div style="display:flex;align-items:center;gap:10px;margin-top:10px">';
+  html+='<button class="btn btn-primary btn-sm" onclick="App.saveWeeklyReview(\''+weekKey+'\')">Save</button>';
+  html+='<span id="wr-save-status" style="font-size:.75rem;color:var(--text-l)"></span></div></div>';
+  panel.innerHTML = html;
 }
 
-// ─── FRIDAY WEEKLY REVIEW REMINDER ────────────────────────────
 function scheduleFridayReminder(){
   if(Notification.permission !== 'granted') return;
-  const now = new Date();
-  const day = now.getDay(); // 5 = Friday
-  const target = new Date(now);
-  // Next Friday at 8:00 PM
-  const daysUntilFri = (5 - day + 7) % 7 || 7;
+  var now = new Date(), day = now.getDay();
+  var daysUntilFri = (5 - day + 7) % 7 || 7;
+  var target = new Date(now);
   target.setDate(now.getDate() + daysUntilFri);
   target.setHours(20, 0, 0, 0);
-  const ms = target - now;
-  setTimeout(() => {
-    new Notification('📅 Weekly Review Time', {
-      body: 'Your week is almost done — take 2 minutes to reflect.',
-      icon: '/icon.svg',
-      tag: 'weekly-review'
-    });
-  }, ms);
+  setTimeout(function(){
+    new Notification('Weekly Review', {body:'Your week is almost done — take 2 minutes to reflect.', icon:'/icon.svg', tag:'weekly-review'});
+  }, target - now);
 }
+
+// ─── SERVICE WORKER + NOTIFICATIONS ──────────────────────────
+var swReg = null;
+async function initSW(){
+  if(!('serviceWorker' in navigator)) return;
+  try { swReg = await navigator.serviceWorker.register('sw.js'); sendCredentialsToSW(); } catch(e){}
+}
+function sendCredentialsToSW(){
+  if(!swReg) return;
+  var target = swReg.active || swReg.installing || swReg.waiting;
+  if(target) target.postMessage({type:'SB_CREDS', url:CFG.url, key:CFG.key});
+}
+async function requestNotificationPermission(){
+  if(!('Notification' in window)) return false;
+  if(Notification.permission === 'granted') return true;
+  if(Notification.permission === 'denied') return false;
+  var r = await Notification.requestPermission();
+  return r === 'granted';
+}
+async function registerPeriodicSync(){
+  if(!swReg) return;
+  try {
+    var s = await navigator.permissions.query({name:'periodic-background-sync'});
+    if(s.state === 'granted') await swReg.periodicSync.register('check-reminders', {minInterval: 15*60*1000});
+  } catch(e){}
+}
+async function checkDueRemindersNow(){
+  if(Notification.permission !== 'granted' || !sb) return;
+  try {
+    var now = new Date().toISOString();
+    var r = await sb.from('notes').select('id,content,reminder_date').eq('is_reminder',true).eq('completed',false).lte('reminder_date',now);
+    if(!r.data || !r.data.length) return;
+    var reg = swReg || await navigator.serviceWorker.ready;
+    for(var i=0;i<r.data.length;i++){
+      var note = r.data[i];
+      await reg.showNotification('Reminder', {body:note.content, icon:'/icon.svg', tag:'reminder-'+note.id});
+    }
+  } catch(e){}
+}
+async function setupNotifications(){
+  var granted = await requestNotificationPermission();
+  if(!granted) return;
+  sendCredentialsToSW();
+  await registerPeriodicSync();
+  await checkDueRemindersNow();
+  scheduleFridayReminder();
+}
+function renderNotifStatus(){
+  var s = el('notif-status');
+  if(!s) return;
+  if(!('Notification' in window)){ s.innerHTML='Not supported in this browser'; return; }
+  var p = Notification.permission;
+  if(p==='granted') s.innerHTML='<span style="color:var(--success)">✅ Enabled</span>';
+  else if(p==='denied') s.innerHTML='<span style="color:var(--danger)">❌ Blocked — enable in device settings</span>';
+  else s.innerHTML='<span style="color:var(--accent)">⚠️ Not enabled yet — tap button below</span>';
+}
+document.addEventListener('visibilitychange', function(){
+  if(!document.hidden && sessionStorage.getItem('auth')==='1') checkDueRemindersNow();
+});
+initSW();
 
 // ─── INIT ─────────────────────────────────────────────────────
 (async function init(){
-  initSB(); // credentials are hardcoded — always ready
-
-  if(!CFG.pinHash){
-    // First time on this device — ask to set a PIN
-    el('pin-screen').classList.remove('hidden');
-    el('pin-title').textContent='Set Your PIN';
-    el('pin-subtitle').textContent='Choose a 4-digit PIN to protect your app';
-    S._settingPin = true;
-    return;
-  }
-
-  if(sessionStorage.getItem('auth')==='1'){
-    el('app').classList.remove('hidden');
-    await renderToday();
-    setupNotifications();
-  } else {
-    el('pin-screen').classList.remove('hidden');
+  try {
+    initSB();
+    if(!CFG.pinHash){
+      el('pin-screen').classList.remove('hidden');
+      if(el('pin-title')) el('pin-title').textContent = 'Set Your PIN';
+      if(el('pin-subtitle')) el('pin-subtitle').textContent = 'Choose a 4-digit PIN to protect your app';
+      S._settingPin = true;
+      return;
+    }
+    if(sessionStorage.getItem('auth')==='1'){
+      el('app').classList.remove('hidden');
+      await renderToday();
+      setupNotifications();
+    } else {
+      el('pin-screen').classList.remove('hidden');
+    }
+  } catch(e){
+    console.error('Init failed:', e);
+    document.body.innerHTML = '<div style="font-family:sans-serif;padding:32px;text-align:center">'
+      + '<div style="font-size:2rem;margin-bottom:12px">⚠️</div>'
+      + '<div style="font-size:1.1rem;font-weight:600">App failed to load</div>'
+      + '<div style="font-size:.85rem;color:#666;margin:8px 0">' + (e && e.message ? e.message : 'Unknown error') + '</div>'
+      + '<button onclick="location.reload()" style="padding:10px 24px;background:#1B4332;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:8px">Try Again</button>'
+      + '</div>';
   }
 })();
 </script>
