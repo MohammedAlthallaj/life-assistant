@@ -615,7 +615,8 @@ async function sha256(str){
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-function toast(msg, dur=2200){
+function toast(msg, dur){
+  if(dur===undefined) dur=2200;
   const t=document.getElementById('toast');
   t.textContent=msg;t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),dur);
@@ -636,7 +637,7 @@ function svgCheck(){return`<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 
 
 // ─── DATA LAYER ───────────────────────────────────────────────
 const DB = {
-  async getSetting(key){ const {data}=await sb.from('app_settings').select('value').eq('key',key).single(); return data?.value||null; },
+  async getSetting(key){ const {data}=await sb.from('app_settings').select('value').eq('key',key).single(); return (data && data.value)||null; },
   async setSetting(key,val){ await sb.from('app_settings').upsert({key,value:String(val),updated_at:new Date().toISOString()}); },
 
   async getHabits(type){ const {data}=await sb.from('habits').select('*').eq('type',type).order('sort_order'); return data||[]; },
@@ -835,26 +836,29 @@ function renderHabitList(containerId, habits, logMap, interactive, streaks){
 async function renderBadHabits(habits,date){
   const c=el('bad-habits-list');
   if(!habits.length){c.innerHTML='<div class="empty-state" style="padding:16px"><p>No bad habits tracked. Add some in Settings.</p></div>';return;}
-  const rows=await Promise.all(habits.map(async h=>{
-    const streak=await computeStreak(h.id);
-    const hadSlip=await DB.hadSlipOn(h.id,date);
-    S.badStreaks[h.id]=streak;
-    S.badSlipDates[h.id]=hadSlip;
-    const streakDisplay=streak===Infinity?'∞':streak;
-    const isDanger=streak<3&&streak!==Infinity;
-    return`<div class="bad-habit-card" id="bhc-${h.id}">
-      <div class="streak-badge${isDanger?' danger':''}">
-        <div class="num">${streakDisplay}</div>
-        <div class="lbl">days</div>
-      </div>
-      <div class="bad-habit-info">
-        <div class="bad-habit-name">${h.name}</div>
-        <div class="bad-habit-meta">${hadSlip?'⚠️ Slip logged today':'✅ Clean today'}</div>
-      </div>
-      ${hadSlip?`<span class="text-muted" style="font-size:.75rem">Logged</span>`:`<button class="slip-btn" onclick="App.logSlip('${h.id}')">Log Slip</button>`}
-    </div>`;
+  var rows = await Promise.all(habits.map(async function(h){
+    var streak = await computeStreak(h.id);
+    var hadSlip = await DB.hadSlipOn(h.id, date);
+    S.badStreaks[h.id] = streak;
+    S.badSlipDates[h.id] = hadSlip;
+    var streakDisplay = streak === Infinity ? '∞' : streak;
+    var isDanger = streak < 3 && streak !== Infinity;
+    var slipBtn = hadSlip
+      ? '<span class="text-muted" style="font-size:.75rem">Logged</span>'
+      : '<button class="slip-btn" onclick="App.logSlip(\'' + h.id + '\')">Log Slip</button>';
+    return '<div class="bad-habit-card" id="bhc-' + h.id + '">'
+      + '<div class="streak-badge' + (isDanger ? ' danger' : '') + '">'
+      + '<div class="num">' + streakDisplay + '</div>'
+      + '<div class="lbl">days</div>'
+      + '</div>'
+      + '<div class="bad-habit-info">'
+      + '<div class="bad-habit-name">' + h.name + '</div>'
+      + '<div class="bad-habit-meta">' + (hadSlip ? '⚠️ Slip logged today' : '✅ Clean today') + '</div>'
+      + '</div>'
+      + slipBtn
+      + '</div>';
   }));
-  c.innerHTML=rows.join('');
+  c.innerHTML = rows.join('');
 }
 
 function updateRing(){
@@ -911,29 +915,31 @@ async function renderBooks(){
   el('tracker-books').innerHTML=html;
 }
 
-function bookCardHTML(b,finished=false){
-  const pct=b.total_pages?Math.round(100*b.current_page/b.total_pages):0;
-  const emojis=['📗','📘','📙','📕','📒'];
-  const emoji=emojis[b.title.charCodeAt(0)%emojis.length];
-  return`<div class="book-card">
-    <div class="book-header">
-      <div class="book-spine">${emoji}</div>
-      <div class="book-meta">
-        <div class="book-title">${b.title}</div>
-        <div class="book-author">${b.author||'Unknown Author'}</div>
-        <div class="book-pages">p. ${b.current_page} / ${b.total_pages}</div>
-      </div>
-    </div>
-    <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
-    <div style="font-size:.75rem;color:var(--text-l);margin-bottom:8px">${pct}% complete</div>
-    <div class="book-actions">
-      <button class="btn btn-secondary btn-sm" onclick="App.editBook('${b.id}')">✏️ Update</button>
-      ${!finished?`<button class="btn btn-accent btn-sm" onclick="App.logReading('${b.id}')">📄 Log Pages</button>`:''}
-      ${!finished?`<button class="btn btn-primary btn-sm" onclick="App.finishBook('${b.id}')">✅ Finished</button>`:''}
-      <button class="btn btn-sm" style="color:var(--danger)" onclick="App.deleteBook('${b.id}')">🗑</button>
-    </div>
-    ${b.personal_notes?`<div style="font-size:.78rem;color:var(--text-m);margin-top:8px;font-style:italic">${b.personal_notes}</div>`:''}
-  </div><div style="height:1px;background:var(--border-l);margin:0 16px"></div>`;
+function bookCardHTML(b, finished){
+  if(finished === undefined) finished = false;
+  var pct = b.total_pages ? Math.round(100*b.current_page/b.total_pages) : 0;
+  var emojis = ['📗','📘','📙','📕','📒'];
+  var emoji = emojis[b.title.charCodeAt(0) % emojis.length];
+  var logBtn = !finished ? '<button class="btn btn-accent btn-sm" onclick="App.logReading(\'' + b.id + '\')">📄 Log Pages</button>' : '';
+  var finBtn = !finished ? '<button class="btn btn-primary btn-sm" onclick="App.finishBook(\'' + b.id + '\')">✅ Finished</button>' : '';
+  var notesDiv = b.personal_notes ? '<div style="font-size:.78rem;color:var(--text-m);margin-top:8px;font-style:italic">' + b.personal_notes + '</div>' : '';
+  return '<div class="book-card">'
+    + '<div class="book-header">'
+    + '<div class="book-spine">' + emoji + '</div>'
+    + '<div class="book-meta">'
+    + '<div class="book-title">' + b.title + '</div>'
+    + '<div class="book-author">' + (b.author || 'Unknown Author') + '</div>'
+    + '<div class="book-pages">p. ' + b.current_page + ' / ' + b.total_pages + '</div>'
+    + '</div></div>'
+    + '<div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:' + pct + '%"></div></div>'
+    + '<div style="font-size:.75rem;color:var(--text-l);margin-bottom:8px">' + pct + '% complete</div>'
+    + '<div class="book-actions">'
+    + '<button class="btn btn-secondary btn-sm" onclick="App.editBook(\'' + b.id + '\')">✏️ Update</button>'
+    + logBtn + finBtn
+    + '<button class="btn btn-sm" style="color:var(--danger)" onclick="App.deleteBook(\'' + b.id + '\')">🗑</button>'
+    + '</div>'
+    + notesDiv
+    + '</div><div style="height:1px;background:var(--border-l);margin:0 16px"></div>';
 }
 
 async function renderQuran(){
@@ -944,10 +950,10 @@ async function renderQuran(){
   ]);
   S.quranToday=q;
   const target=parseInt(wirdTarget||100);
-  const pages=q?.quran_pages||0;
-  const surah=q?.current_surah||'—';
-  const juz=q?.current_juz||'—';
-  const wirdDone=q?.wird_completed||false;
+  const pages=(q && q.quran_pages)||0;
+  const surah=(q && q.current_surah)||'—';
+  const juz=(q && q.current_juz)||'—';
+  const wirdDone=(q && q.wird_completed)||false;
 
   el('tracker-quran').innerHTML=`
     <div class="card">
@@ -975,10 +981,10 @@ async function renderQuran(){
         <input type="number" id="q-pages" value="${pages}" min="0" placeholder="0">
       </div>
       <div class="field"><label>Current Surah</label>
-        <input type="text" id="q-surah" value="${q?.current_surah||''}" placeholder="Al-Baqarah">
+        <input type="text" id="q-surah" value="${(q && q.current_surah)||''}" placeholder="Al-Baqarah">
       </div>
       <div class="field"><label>Current Juz</label>
-        <input type="number" id="q-juz" value="${q?.current_juz||''}" min="1" max="30" placeholder="1–30">
+        <input type="number" id="q-juz" value="${(q && q.current_juz)||''}" min="1" max="30" placeholder="1–30">
       </div>
       <button class="btn btn-primary btn-sm" onclick="App.saveQuran()">Save</button>
     </div>
@@ -1006,20 +1012,23 @@ async function renderNotesList(){
     c.innerHTML='<div class="empty-state" style="margin-top:24px"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p>No notes yet.</p></div>';
     return;
   }
-  c.innerHTML='<div class="habit-list" style="margin:12px 16px 0;padding:0">'+
-    notes.map(n=>`<div class="note-row${n.completed?' completed':''}" id="note-${n.id}">
-      <div class="note-complete-btn${n.completed?' done':''}" onclick="App.toggleNote('${n.id}',${n.completed})">
-        ${svgCheck()}
-      </div>
-      <div style="flex:1">
-        <div class="note-content">${n.content}</div>
-        ${n.is_reminder&&n.reminder_date?`<div class="note-reminder-badge">🔔 ${fmtTs(n.reminder_date)}</div>`:''}
-        <div class="note-meta">${fmtTs(n.created_at)}</div>
-      </div>
-      <button class="del-btn" onclick="App.deleteNote('${n.id}')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-      </button>
-    </div>`).join('')+'</div>';
+  var noteRows = notes.map(function(n){
+    var reminderBadge = (n.is_reminder && n.reminder_date)
+      ? '<div class="note-reminder-badge">🔔 ' + fmtTs(n.reminder_date) + '</div>'
+      : '';
+    var delSvg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
+    return '<div class="note-row' + (n.completed ? ' completed' : '') + '" id="note-' + n.id + '">'
+      + '<div class="note-complete-btn' + (n.completed ? ' done' : '') + '" onclick="App.toggleNote(\'' + n.id + '\',' + n.completed + ')">'
+      + svgCheck() + '</div>'
+      + '<div style="flex:1">'
+      + '<div class="note-content">' + n.content + '</div>'
+      + reminderBadge
+      + '<div class="note-meta">' + fmtTs(n.created_at) + '</div>'
+      + '</div>'
+      + '<button class="del-btn" onclick="App.deleteNote(\'' + n.id + '\')">' + delSvg + '</button>'
+      + '</div>';
+  });
+  c.innerHTML = '<div class="habit-list" style="margin:12px 16px 0;padding:0">' + noteRows.join('') + '</div>';
 }
 
 async function renderIdeasList(){
@@ -1045,17 +1054,19 @@ async function renderLinksList(){
   S.links=links;
   const c=el('notes-content');
   if(!links.length){c.innerHTML='<div class="empty-state" style="margin-top:24px"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><p>No links saved yet.</p></div>';return;}
-  c.innerHTML='<div class="habit-list" style="margin:12px 16px 0;padding:0">'+
-    links.map(l=>`<div class="note-row" id="link-${l.id}">
-      <div style="flex:1">
-        <div class="note-content"><a href="${l.url}" target="_blank" rel="noopener">${l.title||l.url}</a></div>
-        ${l.notes?`<div class="note-meta">${l.notes}</div>`:''}
-        <div class="link-url">${l.url}</div>
-      </div>
-      <button class="del-btn" onclick="App.deleteLink('${l.id}')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-      </button>
-    </div>`).join('')+'</div>';
+  var delSvgL = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
+  var linkRows = links.map(function(l){
+    var notesDiv = l.notes ? '<div class="note-meta">' + l.notes + '</div>' : '';
+    return '<div class="note-row" id="link-' + l.id + '">'
+      + '<div style="flex:1">'
+      + '<div class="note-content"><a href="' + l.url + '" target="_blank" rel="noopener">' + (l.title || l.url) + '</a></div>'
+      + notesDiv
+      + '<div class="link-url">' + l.url + '</div>'
+      + '</div>'
+      + '<button class="del-btn" onclick="App.deleteLink(\'' + l.id + '\')">' + delSvgL + '</button>'
+      + '</div>';
+  });
+  c.innerHTML = '<div class="habit-list" style="margin:12px 16px 0;padding:0">' + linkRows.join('') + '</div>';
 }
 
 // ─── RENDER: ANALYTICS ───────────────────────────────────────
@@ -1087,7 +1098,7 @@ async function renderAnalyticsStats(){
   const totalDays=checkins.filter(c=>c.mood).length;
   const MOOD_MAP={1:{e:'😞',l:'Rough'},2:{e:'😕',l:'Meh'},3:{e:'😐',l:'Okay'},4:{e:'😊',l:'Good'},5:{e:'😄',l:'Great'}};
   const avgMood=totalDays?Math.round(checkins.filter(c=>c.mood).reduce((s,c)=>s+(c.mood||0),0)/totalDays):0;
-  const moodDisplay=avgMood?`${MOOD_MAP[Math.round(avgMood)]?.e||''}<div style="font-size:.8rem;font-weight:600;color:var(--text-m);margin-top:2px">${MOOD_MAP[Math.round(avgMood)]?.l||''}</div>`:'—';
+  const moodDisplay=avgMood?`${(MOOD_MAP[Math.round(avgMood)] && MOOD_MAP[Math.round(avgMood)].e)||''}<div style="font-size:.8rem;font-weight:600;color:var(--text-m);margin-top:2px">${(MOOD_MAP[Math.round(avgMood)] && MOOD_MAP[Math.round(avgMood)].l)||''}</div>`:'—';
   const allActive=allHabits.filter(h=>h.type!=='bad');
   el('analytics-stats').innerHTML=`
     <div class="stat-box"><div class="sv">${totalDays}</div><div class="sl">Days Tracked</div></div>
@@ -1173,7 +1184,8 @@ function renderHabitManager(containerId,habits,type){
 }
 
 // ─── MODAL SYSTEM ─────────────────────────────────────────────
-function openModal(title,bodyHTML,actions=[]){
+function openModal(title,bodyHTML,actions){
+  if(actions===undefined) actions=[];
   el('modal-title').textContent=title;
   el('modal-body').innerHTML=bodyHTML;
   el('modal-actions').innerHTML=actions.map(a=>`<button class="btn ${a.cls||'btn-secondary'}" onclick="${a.fn}">${a.label}</button>`).join('');
@@ -1412,7 +1424,7 @@ const App = {
     const b=S.books.find(x=>x.id===id);
     await Promise.all([
       DB.addReadingLog(id,S.today,pages),
-      DB.updateBook(id,{current_page:Math.min((b?.current_page||0)+pages,b?.total_pages||9999)})
+      DB.updateBook(id,{current_page:Math.min(((b && b.current_page)||0)+pages,(b && b.total_pages)||9999)})
     ]);
     closeModal({});
     await renderBooks();
@@ -1437,7 +1449,7 @@ const App = {
 
   // ── Quran / Wird ──
   async toggleWird(){
-    const cur=S.quranToday?.wird_completed||false;
+    const cur=(S.quranToday && S.quranToday.wird_completed)||false;
     await DB.upsertCheckin(S.viewDate || S.today, {wird_completed:!cur});
     if(!S.quranToday) S.quranToday={};
     S.quranToday.wird_completed=!cur;
