@@ -516,7 +516,7 @@ section.view.active{display:block}
         </div>
 
         <div style="text-align:center;margin-top:32px;color:var(--text-l);font-size:.75rem">
-          Life Assistant v1.2 — Stability Update<br>
+          Life Assistant v1.4 — Bug Fixes<br>
           <button onclick="App.logout()" style="color:var(--danger);font-size:.78rem;margin-top:8px">Sign Out</button>
         </div>
       </div>
@@ -617,23 +617,35 @@ const Security = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SECURITY FIX #2: PIN RATE LIMITING + DEVICE-BOUND SALT
+// SECURITY FIX #2: PIN RATE LIMITING + SYNCED SALT
 // ═══════════════════════════════════════════════════════════════════════════
 const PinSecurity = {
   MAX_ATTEMPTS: 3,
   BASE_LOCKOUT_MS: 30000, // 30 seconds initial lockout
   
-  // Get or create device-specific salt (makes extracted hash useless on other devices)
-  getDeviceSalt: function() {
-    let salt = localStorage.getItem('device_salt');
-    if (!salt) {
-      // Generate random 32-byte salt
-      const array = new Uint8Array(32);
-      crypto.getRandomValues(array);
-      salt = Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
-      localStorage.setItem('device_salt', salt);
-    }
+  // Get or create salt - NOW SYNCED ACROSS DEVICES via Supabase
+  getSalt: function() {
+    // First try to get from CFG (loaded from Supabase)
+    let salt = CFG.pinSalt;
+    if (salt) return salt;
+    
+    // Fallback to localStorage (check both old and new key names)
+    salt = localStorage.getItem('pin_salt') || localStorage.getItem('device_salt');
+    if (salt) return salt;
+    
+    // Generate new salt only if none exists anywhere
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    salt = Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+    localStorage.setItem('pin_salt', salt);
     return salt;
+  },
+  
+  // Generate a new salt (used when setting PIN for first time)
+  generateNewSalt: function() {
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
   },
   
   // Get current lockout state
@@ -794,9 +806,112 @@ const SessionSecurity = {
 const CFG = {
   url: 'https://bbltrktchxsmshmamoxw.supabase.co',
   key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJibHRya3RjaHhzbXNobWFtb3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNjE5NTYsImV4cCI6MjA4OTgzNzk1Nn0.7DzDKznQD7_MzkK00v_rXwpg9rkrKiezv0xzcL79Q8A',
-  get pinHash(){ return localStorage.getItem('pin_hash') || ''; },
-  set pinHash(v){ localStorage.setItem('pin_hash', v); },
-  isConfigured(){ return !!this.pinHash; }
+  
+  // PIN hash - loaded from Supabase, cached locally
+  _pinHash: null,
+  _pinSalt: null,
+  _pinLoaded: false,
+  
+  get pinHash() { 
+    return this._pinHash || localStorage.getItem('pin_hash') || ''; 
+  },
+  set pinHash(v) { 
+    this._pinHash = v;
+    localStorage.setItem('pin_hash', v); // Cache locally for faster startup
+  },
+  
+  get pinSalt() {
+    return this._pinSalt || localStorage.getItem('pin_salt') || '';
+  },
+  set pinSalt(v) {
+    this._pinSalt = v;
+    localStorage.setItem('pin_salt', v); // Cache locally
+  },
+  
+  isConfigured() { 
+    return !!this.pinHash; 
+  },
+  
+  // Load PIN from Supabase (called on init)
+  async loadPinFromCloud() {
+    if (this._pinLoaded) return;
+    
+    try {
+      // Try to get PIN hash from Supabase
+      const { data: hashData } = await sb.from('app_settings')
+        .select('value')
+        .eq('key', 'pin_hash')
+        .maybeSingle();
+      
+      const { data: saltData } = await sb.from('app_settings')
+        .select('value')
+        .eq('key', 'pin_salt')
+        .maybeSingle();
+      
+      if (hashData && hashData.value) {
+        this._pinHash = hashData.value;
+        localStorage.setItem('pin_hash', hashData.value);
+      }
+      
+      if (saltData && saltData.value) {
+        this._pinSalt = saltData.value;
+        localStorage.setItem('pin_salt', saltData.value);
+      }
+      
+      // MIGRATION: If we have hash in cloud but no salt, check for old device_salt
+      // and migrate it to cloud
+      if (hashData && hashData.value && (!saltData || !saltData.value)) {
+        const oldSalt = localStorage.getItem('device_salt') || localStorage.getItem('pin_salt');
+        if (oldSalt) {
+          console.log('[Migration] Found old salt, uploading to cloud...');
+          await this.savePinToCloud(hashData.value, oldSalt);
+        }
+      }
+      
+      // MIGRATION: If no hash in cloud but exists locally, upload it
+      if ((!hashData || !hashData.value) && localStorage.getItem('pin_hash')) {
+        const localHash = localStorage.getItem('pin_hash');
+        const localSalt = localStorage.getItem('device_salt') || localStorage.getItem('pin_salt');
+        if (localHash && localSalt) {
+          console.log('[Migration] Uploading local PIN to cloud...');
+          await this.savePinToCloud(localHash, localSalt);
+        }
+      }
+      
+      this._pinLoaded = true;
+    } catch (e) {
+      // If Supabase fails, fall back to localStorage
+      console.warn('Could not load PIN from cloud, using local:', e.message);
+      this._pinHash = localStorage.getItem('pin_hash') || '';
+      this._pinSalt = localStorage.getItem('device_salt') || localStorage.getItem('pin_salt') || '';
+      this._pinLoaded = true;
+    }
+  },
+  
+  // Save PIN to Supabase (called when setting/changing PIN)
+  async savePinToCloud(hash, salt) {
+    try {
+      await sb.from('app_settings').upsert({ 
+        key: 'pin_hash', 
+        value: hash, 
+        updated_at: new Date().toISOString() 
+      });
+      await sb.from('app_settings').upsert({ 
+        key: 'pin_salt', 
+        value: salt, 
+        updated_at: new Date().toISOString() 
+      });
+      
+      // Update local cache
+      this.pinHash = hash;
+      this.pinSalt = salt;
+      
+      return true;
+    } catch (e) {
+      console.error('Failed to save PIN to cloud:', e);
+      return false;
+    }
+  }
 };
 
 // ─── SUPABASE CLIENT ──────────────────────────────────────────
@@ -879,9 +994,10 @@ const Mutex = {
 };
 
 // ─── UTILITIES ────────────────────────────────────────────────
-async function sha256(str){
-  // Include device salt for PIN hashing
-  const saltedStr = str + ':' + PinSecurity.getDeviceSalt();
+async function sha256(str, salt){
+  // Use provided salt, or get from PinSecurity
+  const useSalt = salt || PinSecurity.getSalt();
+  const saltedStr = str + ':' + useSalt;
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(saltedStr));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
@@ -994,12 +1110,29 @@ const DB = {
   },
   async getLast30HabitStats(){
     const from=new Date(); from.setDate(from.getDate()-29);
-    const {data:logs}=await sb.from('habit_logs').select('habit_id,completed').gte('date',from.toISOString().split('T')[0]);
-    const {data:habits}=await sb.from('habits').select('id,name').in('type',['islamic','regular']).eq('is_active',true);
+    const fromStr = from.toISOString().split('T')[0];
+    const {data:logs}=await sb.from('habit_logs').select('habit_id,date,completed').gte('date',fromStr);
+    const {data:habits}=await sb.from('habits').select('id,name,created_at').in('type',['islamic','regular']).eq('is_active',true);
+    
+    // Calculate number of days in range for each habit
+    const today = new Date();
     const map={};
-    (habits||[]).forEach(h=>map[h.id]={name:h.name,done:0,total:0});
-    (logs||[]).forEach(l=>{if(map[l.habit_id]){map[l.habit_id].total++;if(l.completed)map[l.habit_id].done++;}});
-    return Object.values(map).map(h=>({...h,pct:h.total?Math.round(100*h.done/h.total):0})).sort((a,b)=>b.pct-a.pct);
+    (habits||[]).forEach(h => {
+      // Calculate days since habit was created (or 30 if older)
+      const createdDate = new Date(h.created_at);
+      const startDate = createdDate > from ? createdDate : from;
+      const daysActive = Math.max(1, Math.ceil((today - startDate) / (1000 * 60 * 60 * 24)) + 1);
+      map[h.id] = {name: h.name, done: 0, total: Math.min(daysActive, 30)};
+    });
+    
+    // Count completed days
+    (logs||[]).forEach(l => {
+      if(map[l.habit_id] && l.completed) {
+        map[l.habit_id].done++;
+      }
+    });
+    
+    return Object.values(map).map(h=>({...h, pct: h.total ? Math.round(100*h.done/h.total) : 0})).sort((a,b)=>b.pct-a.pct);
   },
   async exportAll(){
     const [checkins,habits,logs,slips,books,readLogs,notes,ideas,links]=await Promise.all([
@@ -1671,9 +1804,21 @@ const App = {
     
     if(S._settingPin){
       if(S.pinBuffer.length < 4){ el('pin-error').textContent='Use at least 4 digits'; S.pinBuffer=''; return; }
-      const hash = await sha256(S.pinBuffer);
-      CFG.pinHash = hash;
-      await DB.setSetting('pin_hash', hash).catch(function(){});
+      
+      // Generate a new salt for this PIN (will be synced across devices)
+      const newSalt = PinSecurity.generateNewSalt();
+      const hash = await sha256(S.pinBuffer, newSalt);
+      
+      // Save to Supabase for cross-device sync
+      el('pin-error').textContent = 'Saving...';
+      const saved = await CFG.savePinToCloud(hash, newSalt);
+      
+      if (!saved) {
+        // Fallback to local storage if cloud save fails
+        CFG.pinHash = hash;
+        CFG.pinSalt = newSalt;
+      }
+      
       S._settingPin = false;
       S.pinBuffer = '';
       for(var i=0;i<4;i++) el('pd'+i).classList.remove('filled');
@@ -1720,15 +1865,26 @@ const App = {
     if(!np||np.length<4){ toast('PIN must be 4+ digits');return; }
     if(!/^\d+$/.test(np)){ toast('PIN must contain only numbers');return; }
     if(np!==cp){ toast('PINs do not match');return; }
-    const hash=await sha256(np);
-    CFG.pinHash=hash;
-    await DB.setSetting('pin_hash',hash).catch(function(){});
+    
+    // Generate new salt for new PIN
+    const newSalt = PinSecurity.generateNewSalt();
+    const hash = await sha256(np, newSalt);
+    
+    // Save to Supabase for cross-device sync
+    toast('Saving...');
+    const saved = await CFG.savePinToCloud(hash, newSalt);
+    
+    if (!saved) {
+      // Fallback to local storage
+      CFG.pinHash = hash;
+      CFG.pinSalt = newSalt;
+    }
     
     // Invalidate current session - user must re-login with new PIN
     SessionSecurity.clearSession();
     
     el('new-pin').value=''; el('confirm-pin').value='';
-    toast('PIN updated ✓');
+    toast('PIN updated ✓ (synced across devices)');
   },
 
   logout: function(){
@@ -2553,6 +2709,9 @@ initSW();
 (async function init(){
   try {
     initSB();
+    
+    // IMPORTANT: Load PIN from Supabase first (enables cross-device sync)
+    await CFG.loadPinFromCloud();
     
     // Check for existing valid session (FIX #3)
     if(CFG.pinHash && await SessionSecurity.isValidSession(CFG.pinHash)){
