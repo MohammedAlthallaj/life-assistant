@@ -1,8 +1,8 @@
 // Life Assistant v2.0 - Couples Edition Service Worker
 const CACHE_NAME = 'life-assistant-v2';
 const ASSETS = [
-  '/',
-  '/index.html',
+  './',
+  './index.html',
   'https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Sora:wght@300;400;500;600&display=swap',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js',
   'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js'

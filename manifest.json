@@ -2,7 +2,8 @@
   "name": "Life Assistant",
   "short_name": "Life",
   "description": "Islamic habit tracking & personal life management for couples",
-  "start_url": "/",
+  "start_url": ".",
+  "scope": ".",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#1B4332",
@@ -30,12 +31,12 @@
   "shortcuts": [
     {
       "name": "Today",
-      "url": "/?view=today",
+      "url": "./index.html?view=today",
       "icons": [{ "src": "web-app-manifest-192x192.png", "sizes": "192x192" }]
     },
     {
       "name": "Quran Tracker",
-      "url": "/?view=quran",
+      "url": "./index.html?view=quran",
       "icons": [{ "src": "web-app-manifest-192x192.png", "sizes": "192x192" }]
     }
   ]
