@@ -521,7 +521,7 @@ section.view.active{display:block}
         </div>
 
         <div style="text-align:center;margin-top:32px;color:var(--text-l);font-size:.75rem">
-          Life Assistant v1.5 — PIN Reset Fix<br>
+          Life Assistant v1.6 — PIN Reset Fix<br>
           <button onclick="App.logout()" style="color:var(--danger);font-size:.78rem;margin-top:8px">Sign Out</button>
         </div>
       </div>
@@ -1903,16 +1903,21 @@ const App = {
 
   // Forgot PIN - allows user to reset their PIN
   forgotPIN: async function() {
-    const confirmed = await this.confirm(
-      '⚠️ Reset your PIN?\n\nThis will delete your current PIN and let you create a new one. Your data will NOT be deleted.'
+    // Use native confirm since custom modal might not work on PIN screen
+    const confirmed = window.confirm(
+      'Reset your PIN?\n\nThis will delete your current PIN and let you create a new one.\n\nYour data (habits, journal, books, etc.) will NOT be deleted.'
     );
     
     if (!confirmed) return;
+    
+    // Show loading state
+    if(el('pin-error')) el('pin-error').textContent = 'Resetting...';
     
     // Clear PIN from everywhere
     localStorage.removeItem('pin_hash');
     localStorage.removeItem('pin_salt');
     localStorage.removeItem('device_salt');
+    localStorage.removeItem('pin_lockout');
     CFG._pinHash = null;
     CFG._pinSalt = null;
     CFG._pinLoaded = false;
@@ -1921,11 +1926,12 @@ const App = {
     try {
       await sb.from('app_settings').delete().eq('key', 'pin_hash');
       await sb.from('app_settings').delete().eq('key', 'pin_salt');
+      console.log('[ForgotPIN] Cleared PIN from Supabase');
     } catch (e) {
       console.warn('Could not clear PIN from cloud:', e);
     }
     
-    // Clear session
+    // Clear session and lockout
     SessionSecurity.clearSession();
     PinSecurity.recordSuccess(); // Reset lockout
     
@@ -1935,18 +1941,18 @@ const App = {
     for(var i=0;i<4;i++) el('pd'+i).classList.remove('filled');
     
     if(el('pin-title')) el('pin-title').textContent = 'Set New PIN';
-    if(el('pin-subtitle')) el('pin-subtitle').textContent = 'Choose a 4-digit PIN';
+    if(el('pin-subtitle')) el('pin-subtitle').textContent = 'Choose a 4-digit PIN to protect your app';
     if(el('pin-error')) el('pin-error').textContent = '';
     if(el('pin-lockout')) el('pin-lockout').classList.add('hidden');
     if(el('forgot-pin-link')) el('forgot-pin-link').style.display = 'none';
     
-    // Enable PIN pad
+    // Enable PIN pad buttons
     const pinPad = el('pin-pad');
     if (pinPad) {
       pinPad.querySelectorAll('.pin-key').forEach(btn => btn.disabled = false);
     }
     
-    toast('Enter a new PIN');
+    toast('PIN cleared! Enter a new PIN.');
   },
 
   // ── Today ──
