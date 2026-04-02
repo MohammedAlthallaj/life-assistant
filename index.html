@@ -289,7 +289,7 @@ section.view.active{display:block}
 </head>
 <body>
 
-<!-- ═══════════════════════════════════════════════<!-- ═══════════════════════════════════════════════════
+<!-- ══════════════════════════════════════════════════════════════════════════════════════════════════
   PIN SCREEN
 ═══════════════════════════════════════════════════ -->
 <div id="pin-screen" class="splash-screen hidden">
@@ -821,7 +821,7 @@ function renderHabitList(containerId, habits, logMap, interactive, streaks){
     var pillLabel = streak >= 2 ? ('🔥 ' + streak + 'd') : streak === 1 ? '1d' : '';
     html += '<div class="habit-row' + (done ? ' done' : '') + '" id="hr-' + h.id + '">';
     if(interactive){
-      html += '<div class="habit-check' + (done ? ' checked' : '') + '" onclick="App.toggleHabit('' + h.id + '','' + containerId + '')">';
+      html += '<div class="habit-check' + (done ? ' checked' : '') + '" onclick="App.toggleHabit(\'' + h.id + '\',\'' + containerId + '\')">';
     } else {
       html += '<div class="habit-check' + (done ? ' checked' : '') + '" style="cursor:default">';
     }
@@ -1043,7 +1043,7 @@ async function renderIdeasList(){
         <div class="note-content">${i.content}</div>
         <div class="note-meta">${fmtTs(i.created_at)}</div>
       </div>
-      <button class="del-btn" onclick="App.deleteIdea('${i.id}')">
+      '<button class="del-btn" onclick="App.deleteIdea(\'' + i.id + '\')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
       </button>
     </div>`).join('')+'</div>';
@@ -1173,14 +1173,14 @@ function renderHabitManager(containerId,habits,type){
   const c=el(containerId);
   if(!habits.length){c.innerHTML=`<div class="text-muted" style="font-size:.82rem;padding:8px 0">No habits yet.</div>`;return;}
   c.innerHTML=habits.map(h=>`
-    <div class="habit-mgr-row" id="mgr-${h.id}">
-      <div class="habit-mgr-name">${h.name}</div>
-      <label class="toggle" title="${h.is_active?'Active (tap to disable)':'Disabled (tap to enable)'}">
-        <input type="checkbox" ${h.is_active?'checked':''} onchange="App.toggleHabitActive('${h.id}',this.checked,'${type}')">
-        <span class="toggle-slider"></span>
-      </label>
-      <button class="btn btn-sm" style="color:var(--danger)" onclick="App.confirmDeleteHabit('${h.id}','${h.name}','${type}')">🗑</button>
-    </div>`).join('');
+  <div class="habit-mgr-row" id="mgr-${h.id}">
+    <div class="habit-mgr-name">${h.name}</div>
+    <label class="toggle" title="${h.is_active?'Active (tap to disable)':'Disabled (tap to enable)'}">
+      <input type="checkbox" ${h.is_active?'checked':''} onchange="App.toggleHabitActive(\'' + h.id + '\',this.checked,\'' + type + '\')">
+      <span class="toggle-slider"></span>
+    </label>
+    <button class="btn btn-sm" style="color:var(--danger)" onclick="App.confirmDeleteHabit(\'' + h.id + '\',\'' + h.name + '\',\'' + type + '\')">🗑</button>
+  </div>`).join('');
 }
 
 // ─── MODAL SYSTEM ─────────────────────────────────────────────
