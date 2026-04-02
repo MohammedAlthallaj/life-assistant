@@ -516,7 +516,7 @@ section.view.active{display:block}
         </div>
 
         <div style="text-align:center;margin-top:32px;color:var(--text-l);font-size:.75rem">
-          Life Assistant v1.1 — Security Update<br>
+          Life Assistant v1.2 — Stability Update<br>
           <button onclick="App.logout()" style="color:var(--danger);font-size:.78rem;margin-top:8px">Sign Out</button>
         </div>
       </div>
@@ -830,7 +830,52 @@ const S = {
   prayerTimings: null,
   goodStreaks: {},
   viewDate: new Date().toISOString().split('T')[0],
-  lockoutInterval: null
+  lockoutInterval: null,
+  // Issue #10 FIX: Track intervals for cleanup
+  prayerCountdownInterval: null,
+  prayerTimers: []
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ISSUE #6 FIX: MUTEX FOR UPSERT OPERATIONS (Prevents Race Conditions)
+// ═══════════════════════════════════════════════════════════════════════════
+const Mutex = {
+  _locks: {},
+  _queues: {},
+  
+  async acquire(key) {
+    if (!this._queues[key]) this._queues[key] = [];
+    
+    return new Promise(resolve => {
+      const tryAcquire = () => {
+        if (!this._locks[key]) {
+          this._locks[key] = true;
+          resolve();
+        } else {
+          this._queues[key].push(tryAcquire);
+        }
+      };
+      tryAcquire();
+    });
+  },
+  
+  release(key) {
+    this._locks[key] = false;
+    if (this._queues[key] && this._queues[key].length > 0) {
+      const next = this._queues[key].shift();
+      next();
+    }
+  },
+  
+  // Helper: Run function with lock
+  async withLock(key, fn) {
+    await this.acquire(key);
+    try {
+      return await fn();
+    } finally {
+      this.release(key);
+    }
+  }
 };
 
 // ─── UTILITIES ────────────────────────────────────────────────
@@ -873,27 +918,39 @@ const DB = {
   async deleteHabit(id){ return sb.from('habits').delete().eq('id',id); },
 
   async getCheckin(date){ const {data}=await sb.from('daily_checkins').select('*').eq('date',date).maybeSingle(); return data; },
+  
+  // Issue #6 FIX: Use mutex to prevent race conditions on concurrent updates
   async upsertCheckin(date, obj){
-    var current = S.checkin || {};
-    S.checkin = Object.assign({}, current, obj, {date: date});
-    var payload = {
-      mood: S.checkin.mood !== undefined ? S.checkin.mood : null,
-      journal: S.checkin.journal || null,
-      wird_completed: S.checkin.wird_completed || false,
-      quran_pages: S.checkin.quran_pages || 0,
-      current_surah: S.checkin.current_surah || null,
-      current_juz: S.checkin.current_juz || null,
-      updated_at: new Date().toISOString()
-    };
-    if(S.checkin.id){
-      var r = await sb.from('daily_checkins').update(payload).eq('id', S.checkin.id);
-      if(r.error) console.error('Checkin update failed:', r.error);
-    } else {
-      var payload2 = Object.assign({date: date}, payload);
-      var r2 = await sb.from('daily_checkins').insert(payload2).select().single();
-      if(r2.error) console.error('Checkin insert failed:', r2.error);
-      else if(r2.data) S.checkin = Object.assign(S.checkin, {id: r2.data.id});
-    }
+    return Mutex.withLock('checkin_' + date, async () => {
+      // Re-fetch current state inside lock to get latest data
+      if (!S.checkin || S.checkin.date !== date) {
+        const freshData = await this.getCheckin(date);
+        S.checkin = freshData || { date: date };
+      }
+      
+      // Merge new data
+      S.checkin = Object.assign({}, S.checkin, obj, {date: date});
+      
+      var payload = {
+        mood: S.checkin.mood !== undefined ? S.checkin.mood : null,
+        journal: S.checkin.journal || null,
+        wird_completed: S.checkin.wird_completed || false,
+        quran_pages: S.checkin.quran_pages || 0,
+        current_surah: S.checkin.current_surah || null,
+        current_juz: S.checkin.current_juz || null,
+        updated_at: new Date().toISOString()
+      };
+      
+      if(S.checkin.id){
+        var r = await sb.from('daily_checkins').update(payload).eq('id', S.checkin.id);
+        if(r.error) console.error('Checkin update failed:', r.error);
+      } else {
+        var payload2 = Object.assign({date: date}, payload);
+        var r2 = await sb.from('daily_checkins').insert(payload2).select().single();
+        if(r2.error) console.error('Checkin insert failed:', r2.error);
+        else if(r2.data) S.checkin = Object.assign(S.checkin, {id: r2.data.id});
+      }
+    });
   },
 
   async getHabitLogs(date){ const {data}=await sb.from('habit_logs').select('*').eq('date',date); return data||[]; },
@@ -1501,7 +1558,23 @@ const App = {
     S.viewDate = S.today;
     renderToday();
   },
+  
+  // Issue #10 FIX: Cleanup function for intervals
+  _cleanupIntervals: function() {
+    // Clear prayer countdown
+    if (S.prayerCountdownInterval) {
+      clearInterval(S.prayerCountdownInterval);
+      S.prayerCountdownInterval = null;
+    }
+    // Note: Don't clear prayer notification timers - they should fire even when not on Today view
+  },
+  
   nav: function(view,el_){
+    // Issue #10 FIX: Cleanup intervals when leaving Today view
+    if (S.view === 'today' && view !== 'today') {
+      this._cleanupIntervals();
+    }
+    
     document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
     el_.classList.add('active');
     document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
@@ -1519,8 +1592,14 @@ const App = {
     el_.classList.add('active');
     el('analytics-stats-panel').classList.toggle('hidden', tab !== 'stats');
     el('analytics-weekly-panel').classList.toggle('hidden', tab !== 'weekly');
-    if(tab === 'weekly') renderWeeklyReview(0);
+    // Issue #4 FIX: Use App.renderWeeklyReview for consistency
+    if(tab === 'weekly') App.renderWeeklyReview(0);
     else renderAnalyticsStats();
+  },
+  
+  // Issue #4 FIX: Add renderWeeklyReview to App object for consistency
+  renderWeeklyReview: function(offset) {
+    return renderWeeklyReview(offset);
   },
 
   saveWeeklyReview: async function(weekKey){
@@ -1708,9 +1787,33 @@ const App = {
   },
 
   async saveNewBook(){
-    const title=el('m-title').value.trim();
+    // Issue #5 FIX: Null checks
+    const titleEl = el('m-title');
+    const authorEl = el('m-author');
+    const totalPagesEl = el('m-totalpages');
+    const curPageEl = el('m-curpage');
+    
+    if (!titleEl) { toast('Error loading form'); return; }
+    
+    const title = titleEl.value.trim();
     if(!title){toast('Title required');return;}
-    await DB.addBook({title,author:el('m-author').value.trim(),total_pages:parseInt(el('m-totalpages').value)||100,current_page:parseInt(el('m-curpage').value)||0,status:'reading'});
+    
+    // Issue #8 FIX: Input validation for pages
+    let totalPages = parseInt(totalPagesEl && totalPagesEl.value) || 100;
+    let currentPage = parseInt(curPageEl && curPageEl.value) || 0;
+    
+    // Ensure positive values
+    if (totalPages < 1) totalPages = 1;
+    if (currentPage < 0) currentPage = 0;
+    if (currentPage > totalPages) currentPage = totalPages;
+    
+    await DB.addBook({
+      title,
+      author: (authorEl && authorEl.value.trim()) || '',
+      total_pages: totalPages,
+      current_page: currentPage,
+      status:'reading'
+    });
     closeModal({});
     await renderBooks();
     toast('Book added ✓');
@@ -1729,7 +1832,24 @@ const App = {
   },
 
   async saveBook(id){
-    await DB.updateBook(id,{current_page:parseInt(el('m-cp').value)||0,total_pages:parseInt(el('m-tp').value)||100,personal_notes:el('m-notes').value.trim()});
+    // Issue #5 FIX: Null checks
+    const cpEl = el('m-cp');
+    const tpEl = el('m-tp');
+    const notesEl = el('m-notes');
+    
+    // Issue #8 FIX: Input validation
+    let currentPage = parseInt(cpEl && cpEl.value) || 0;
+    let totalPages = parseInt(tpEl && tpEl.value) || 100;
+    
+    if (totalPages < 1) totalPages = 1;
+    if (currentPage < 0) currentPage = 0;
+    if (currentPage > totalPages) currentPage = totalPages;
+    
+    await DB.updateBook(id, {
+      current_page: currentPage,
+      total_pages: totalPages,
+      personal_notes: (notesEl && notesEl.value.trim()) || ''
+    });
     closeModal({});
     await renderBooks();
     toast('Book updated ✓');
@@ -1745,12 +1865,18 @@ const App = {
   },
 
   async saveReadingLog(id){
-    const pages=parseInt(el('m-pr').value)||0;
-    if(!pages){toast('Enter pages read');return;}
-    const b=S.books.find(x=>x.id===id);
+    // Issue #8 FIX: Input validation
+    const prEl = el('m-pr');
+    let pages = parseInt(prEl && prEl.value) || 0;
+    
+    if (pages <= 0) { toast('Enter pages read (must be positive)'); return; }
+    
+    const b = S.books.find(x => x.id === id);
+    const newPage = Math.min(((b && b.current_page) || 0) + pages, (b && b.total_pages) || 9999);
+    
     await Promise.all([
-      DB.addReadingLog(id,S.today,pages),
-      DB.updateBook(id,{current_page:Math.min(((b && b.current_page)||0)+pages,(b && b.total_pages)||9999)})
+      DB.addReadingLog(id, S.today, pages),
+      DB.updateBook(id, { current_page: newPage })
     ]);
     closeModal({});
     await renderBooks();
@@ -1775,19 +1901,49 @@ const App = {
 
   // ── Quran / Wird ──
   async toggleWird(){
+    // Issue #5 FIX: Null checks
+    const wirdCheck = el('wird-check');
     const cur=(S.quranToday && S.quranToday.wird_completed)||false;
     await DB.upsertCheckin(S.viewDate || S.today, {wird_completed:!cur});
     if(!S.quranToday) S.quranToday={};
     S.quranToday.wird_completed=!cur;
-    el('wird-check').classList.toggle('done',!cur);
-    el('wird-check').innerHTML=svgCheck();
+    if(wirdCheck) {
+      wirdCheck.classList.toggle('done',!cur);
+      wirdCheck.innerHTML=svgCheck();
+    }
     toast(!cur?'Wird completed! 🌙':'Wird unmarked');
   },
 
   async saveQuran(){
-    const pages=parseInt(el('q-pages').value)||0;
-    const surah=el('q-surah').value.trim();
-    const juz=parseInt(el('q-juz').value)||null;
+    // Issue #8 FIX: Input validation
+    const pagesEl = el('q-pages');
+    const surahEl = el('q-surah');
+    const juzEl = el('q-juz');
+    
+    // Issue #5 FIX: Null checks
+    if (!pagesEl || !surahEl || !juzEl) {
+      toast('Error loading form');
+      return;
+    }
+    
+    let pages = parseInt(pagesEl.value) || 0;
+    const surah = surahEl.value.trim();
+    let juz = parseInt(juzEl.value) || null;
+    
+    // Validate pages (non-negative)
+    if (pages < 0) {
+      toast('Pages cannot be negative');
+      pagesEl.value = 0;
+      return;
+    }
+    
+    // Validate juz (1-30 or null)
+    if (juz !== null && (juz < 1 || juz > 30)) {
+      toast('Juz must be between 1 and 30');
+      juzEl.value = Math.max(1, Math.min(30, juz));
+      return;
+    }
+    
     await DB.upsertCheckin(S.viewDate || S.today, {quran_pages:pages, current_surah:surah, current_juz:juz});
     await renderQuran();
     toast('Quran tracker updated ✓');
@@ -1890,9 +2046,40 @@ const App = {
   },
 
   async saveLink(){
-    const url=el('m-lu').value.trim();
+    // Issue #5 FIX: Null checks
+    const urlEl = el('m-lu');
+    const titleEl = el('m-lt');
+    const notesEl = el('m-ln');
+    
+    if (!urlEl) { toast('Error loading form'); return; }
+    
+    let url = (urlEl.value || '').trim();
     if(!url){toast('URL required');return;}
-    await DB.addLink({url,title:el('m-lt').value.trim(),notes:el('m-ln').value.trim()});
+    
+    // Issue #8 FIX: URL validation
+    // Add https:// if no protocol specified
+    if (url && !url.includes('://')) {
+      url = 'https://' + url;
+    }
+    
+    // Validate URL format
+    try {
+      const parsed = new URL(url);
+      // Only allow http and https protocols
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        toast('Only http:// and https:// URLs allowed');
+        return;
+      }
+    } catch (e) {
+      toast('Invalid URL format');
+      return;
+    }
+    
+    await DB.addLink({
+      url: url,
+      title: (titleEl && titleEl.value.trim()) || '',
+      notes: (notesEl && notesEl.value.trim()) || ''
+    });
     closeModal({});
     await renderLinksList();
     toast('Link saved ✓');
@@ -2035,8 +2222,7 @@ document.getElementById('journal-area').addEventListener('input',e=>journalSave(
 // ─── PRAYER TIMES ────────────────────────────────────────────
 var PRAYERS = ['Fajr','Dhuhr','Asr','Maghrib','Isha'];
 var SHARJAH_LAT = 25.3463, SHARJAH_LNG = 55.4209, PRAYER_METHOD = 4;
-var prayerTimers = [];
-var countdownInterval = null;
+// Note: prayerTimers and countdownInterval moved to S (state) for proper cleanup
 
 async function loadPrayerTimes(){
   try {
@@ -2087,10 +2273,28 @@ function renderPrayerCard(timings){
 }
 
 function startPrayerCountdown(timings){
-  if(countdownInterval) clearInterval(countdownInterval);
+  // Issue #10 FIX: Clear existing interval before starting new one
+  if(S.prayerCountdownInterval) {
+    clearInterval(S.prayerCountdownInterval);
+    S.prayerCountdownInterval = null;
+  }
+  
   function tick(){
+    // Issue #5 FIX: Null check for element
     var cd = el('prayer-countdown');
-    if(!cd){ clearInterval(countdownInterval); return; }
+    if(!cd){ 
+      clearInterval(S.prayerCountdownInterval); 
+      S.prayerCountdownInterval = null;
+      return; 
+    }
+    
+    // Stop if not on Today view
+    if(S.view !== 'today') {
+      clearInterval(S.prayerCountdownInterval);
+      S.prayerCountdownInterval = null;
+      return;
+    }
+    
     var now = new Date();
     var times = PRAYERS.map(function(p){ return {name:p, dt:parsePrayerTime(timings[p], S.today)}; });
     var next = null;
@@ -2102,26 +2306,29 @@ function startPrayerCountdown(timings){
     if(s === 0) renderPrayerCard(timings);
   }
   tick();
-  countdownInterval = setInterval(tick, 1000);
+  S.prayerCountdownInterval = setInterval(tick, 1000);
 }
 
 async function schedulePrayerNotifications(timings){
   if(Notification.permission !== 'granted') return;
-  prayerTimers.forEach(function(t){ clearTimeout(t); });
-  prayerTimers = [];
+  
+  // Issue #10 FIX: Clear existing timers using state
+  S.prayerTimers.forEach(function(t){ clearTimeout(t); });
+  S.prayerTimers = [];
+  
   var now = new Date();
   PRAYERS.forEach(function(prayer){
     var dt = parsePrayerTime(timings[prayer], S.today);
     var b5 = new Date(dt.getTime() - 5*60*1000);
-    if(b5 > now) prayerTimers.push(setTimeout(function(){
+    if(b5 > now) S.prayerTimers.push(setTimeout(function(){
       new Notification('🕌 ' + prayer + ' in 5 minutes', {body:'Time to prepare.', icon:'/icon.svg', tag:'prayer-before-'+prayer});
     }, b5 - now));
-    if(dt > now) prayerTimers.push(setTimeout(function(){
+    if(dt > now) S.prayerTimers.push(setTimeout(function(){
       new Notification('🕌 ' + prayer, {body:'الله أكبر · حي على الصلاة', icon:'/icon.svg', tag:'prayer-athan-'+prayer});
       if(S.view === 'today' && S.prayerTimings) renderPrayerCard(S.prayerTimings);
     }, dt - now));
     var a10 = new Date(dt.getTime() + 10*60*1000);
-    if(a10 > now) prayerTimers.push(setTimeout(function(){
+    if(a10 > now) S.prayerTimers.push(setTimeout(function(){
       new Notification('🕌 ' + prayer + ' — Sunnah reminder', {body:"10 minutes passed. Don't miss the Sunnah prayers.", icon:'/icon.svg', tag:'prayer-sunnah-'+prayer});
     }, a10 - now));
   });
@@ -2171,85 +2378,103 @@ function dateRange(start, end){
   return dates;
 }
 
+// Issue #4 FIX: This function is also exposed via App.renderWeeklyReview for consistency
 async function renderWeeklyReview(offset){
   if(offset === undefined) offset = 0;
+  
+  // Issue #5 FIX: Null check for panel element
   var panel = el('analytics-weekly-panel');
+  if (!panel) {
+    console.warn('Weekly review panel not found');
+    return;
+  }
+  
   panel.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-l)">Loading...</div>';
-  var bounds = getWeekBounds(offset);
-  var start = bounds.start, end = bounds.end;
-  var dates = dateRange(start, end);
-  var weekKey = start.toISOString().split('T')[0];
-  var DAY_LABELS = ['Sat','Sun','Mon','Tue','Wed','Thu','Fri'];
-  var MOOD_EMOJIS = {1:'😞',2:'😕',3:'😐',4:'😊',5:'😄'};
-  var results = await Promise.all([
-    (async function(){ var r=await sb.from('daily_checkins').select('date,mood').in('date',dates); return r.data||[]; })(),
-    (async function(){ var r=await sb.from('habit_logs').select('habit_id,date,completed').in('date',dates); return r.data||[]; })(),
-    (async function(){ var r=await sb.from('habits').select('id,name').in('type',['islamic','regular']).eq('is_active',true).order('sort_order'); return r.data||[]; })(),
-    DB.getSetting('wr_'+weekKey)
-  ]);
-  var checkins=results[0], logs=results[1], habits=results[2], savedReflection=results[3];
-  var checkinMap={};
-  checkins.forEach(function(c){ checkinMap[c.date]=c; });
-  var logMap={};
-  logs.forEach(function(l){ if(!logMap[l.habit_id]) logMap[l.habit_id]={}; logMap[l.habit_id][l.date]=l.completed; });
-  var dayPct={};
-  dates.forEach(function(d){
-    var total=habits.length;
-    var done=habits.filter(function(h){ return logMap[h.id]&&logMap[h.id][d]; }).length;
-    dayPct[d]=total?Math.round(100*done/total):0;
-  });
-  var weekDone=habits.reduce(function(sum,h){ return sum+dates.filter(function(d){ return logMap[h.id]&&logMap[h.id][d]; }).length; },0);
-  var weekTotal=habits.length*7;
-  var weekPct=weekTotal?Math.round(100*weekDone/weekTotal):0;
-  var moods=dates.map(function(d){ return checkinMap[d]?checkinMap[d].mood:null; }).filter(Boolean);
-  var avgMood=moods.length?Math.round(moods.reduce(function(s,m){ return s+m; },0)/moods.length):0;
-  var bestDay=dates[0], worstDay=dates[0];
-  dates.forEach(function(d){ if(dayPct[d]>=dayPct[bestDay]) bestDay=d; if(dayPct[d]<=dayPct[worstDay]) worstDay=d; });
-  var weekLabel=start.toLocaleDateString('en-GB',{month:'short',day:'numeric'})+' – '+end.toLocaleDateString('en-GB',{month:'short',day:'numeric',year:'numeric'});
-  var today=S.today, isCurrentWeek=offset===0;
-  var dayGridHTML='';
-  dates.forEach(function(d,i){
-    var mood=checkinMap[d]?checkinMap[d].mood:null;
-    var pct=dayPct[d], isToday=d===today;
-    var pctColor=pct>=80?'var(--primary)':pct>=50?'var(--accent)':'var(--danger)';
-    dayGridHTML+='<div class="week-day">';
-    dayGridHTML+='<div class="week-day-label" style="'+(isToday?'color:var(--primary);font-weight:800':'')+'">'+ DAY_LABELS[i]+'</div>';
-    dayGridHTML+='<div class="week-day-mood" style="'+(isToday?'border:2px solid var(--primary)':'')+'">'+(mood?MOOD_EMOJIS[mood]:'·')+'</div>';
-    dayGridHTML+='<div class="week-day-pct" style="color:'+pctColor+'">'+pct+'%</div>';
-    dayGridHTML+='</div>';
-  });
-  // FIX #1: XSS - Escape habit names in weekly review
-  var habitHTML='';
-  habits.forEach(function(h){
-    var dots='';
-    dates.forEach(function(d){ var done=logMap[h.id]&&logMap[h.id][d], isTd=d===today; dots+='<div class="week-dot'+(done?' done':'')+(isTd?' today':'')+'" title="'+d+'"></div>'; });
-    habitHTML+='<div class="week-habit-row"><div class="week-habit-name" title="'+Security.escapeAttr(h.name)+'">'+Security.esc(h.name)+'</div><div class="week-habit-dots">'+dots+'</div></div>';
-  });
-  var html='';
-  html+='<div class="card"><div class="week-nav">';
-  html+='<button onclick="renderWeeklyReview('+(offset-1)+')" style="padding:6px 10px;border-radius:8px;background:var(--surface2);font-size:.8rem">‹ Prev</button>';
-  html+='<span>'+weekLabel+'</span>';
-  html+='<button onclick="renderWeeklyReview('+(offset+1)+')" style="padding:6px 10px;border-radius:8px;background:var(--surface2);font-size:.8rem;opacity:'+(isCurrentWeek?'0.3':'1')+'" '+(isCurrentWeek?'disabled':'')+'>Next ›</button>';
-  html+='</div><div class="week-day-grid">'+dayGridHTML+'</div>';
-  html+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">';
-  html+='<div style="text-align:center;background:var(--surface2);border-radius:10px;padding:10px"><div style="font-size:1.3rem;font-weight:700;color:var(--primary)">'+weekPct+'%</div><div style="font-size:.65rem;color:var(--text-l);margin-top:2px">Week Score</div></div>';
-  html+='<div style="text-align:center;background:var(--surface2);border-radius:10px;padding:10px"><div style="font-size:1.3rem">'+(avgMood?MOOD_EMOJIS[avgMood]:'—')+'</div><div style="font-size:.65rem;color:var(--text-l);margin-top:2px">Avg Mood</div></div>';
-  html+='<div style="text-align:center;background:var(--surface2);border-radius:10px;padding:10px"><div style="font-size:1rem;font-weight:700;color:var(--primary)">'+weekDone+'/'+weekTotal+'</div><div style="font-size:.65rem;color:var(--text-l);margin-top:2px">Habits Done</div></div>';
-  html+='</div></div>';
-  html+='<div class="card"><div class="card-title">Habit Breakdown</div>'+habitHTML+'</div>';
-  var bestName=new Date(bestDay+'T00:00:00').toLocaleDateString('en-GB',{weekday:'long'});
-  var worstName=new Date(worstDay+'T00:00:00').toLocaleDateString('en-GB',{weekday:'long'});
-  html+='<div class="card" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
-  html+='<div><div style="font-size:.7rem;font-weight:700;color:var(--text-l);text-transform:uppercase;margin-bottom:4px">Best Day</div><div style="font-size:.9rem;font-weight:600">'+bestName+'</div><div style="font-size:.75rem;color:var(--primary)">'+dayPct[bestDay]+'% complete</div></div>';
-  html+='<div><div style="font-size:.7rem;font-weight:700;color:var(--text-l);text-transform:uppercase;margin-bottom:4px">Needs Work</div><div style="font-size:.9rem;font-weight:600">'+worstName+'</div><div style="font-size:.75rem;color:var(--danger)">'+dayPct[worstDay]+'% complete</div></div>';
-  html+='</div>';
-  // FIX #1: XSS - Escape saved reflection
-  html+='<div class="card" style="margin-bottom:0"><div class="card-title">Weekly Reflection</div>';
-  html+='<textarea id="wr-reflection" class="review-textarea" placeholder="What went well? What will you improve?">'+Security.esc(savedReflection||'')+'</textarea>';
-  html+='<div style="display:flex;align-items:center;gap:10px;margin-top:10px">';
-  html+='<button class="btn btn-primary btn-sm" onclick="App.saveWeeklyReview(\''+weekKey+'\')">Save</button>';
-  html+='<span id="wr-save-status" style="font-size:.75rem;color:var(--text-l)"></span></div></div>';
-  panel.innerHTML = html;
+  
+  try {
+    var bounds = getWeekBounds(offset);
+    var start = bounds.start, end = bounds.end;
+    var dates = dateRange(start, end);
+    var weekKey = start.toISOString().split('T')[0];
+    var DAY_LABELS = ['Sat','Sun','Mon','Tue','Wed','Thu','Fri'];
+    var MOOD_EMOJIS = {1:'😞',2:'😕',3:'😐',4:'😊',5:'😄'};
+    var results = await Promise.all([
+      (async function(){ var r=await sb.from('daily_checkins').select('date,mood').in('date',dates); return r.data||[]; })(),
+      (async function(){ var r=await sb.from('habit_logs').select('habit_id,date,completed').in('date',dates); return r.data||[]; })(),
+      (async function(){ var r=await sb.from('habits').select('id,name').in('type',['islamic','regular']).eq('is_active',true).order('sort_order'); return r.data||[]; })(),
+      DB.getSetting('wr_'+weekKey)
+    ]);
+    var checkins=results[0], logs=results[1], habits=results[2], savedReflection=results[3];
+    var checkinMap={};
+    checkins.forEach(function(c){ checkinMap[c.date]=c; });
+    var logMap={};
+    logs.forEach(function(l){ if(!logMap[l.habit_id]) logMap[l.habit_id]={}; logMap[l.habit_id][l.date]=l.completed; });
+    var dayPct={};
+    dates.forEach(function(d){
+      var total=habits.length;
+      var done=habits.filter(function(h){ return logMap[h.id]&&logMap[h.id][d]; }).length;
+      dayPct[d]=total?Math.round(100*done/total):0;
+    });
+    var weekDone=habits.reduce(function(sum,h){ return sum+dates.filter(function(d){ return logMap[h.id]&&logMap[h.id][d]; }).length; },0);
+    var weekTotal=habits.length*7;
+    var weekPct=weekTotal?Math.round(100*weekDone/weekTotal):0;
+    var moods=dates.map(function(d){ return checkinMap[d]?checkinMap[d].mood:null; }).filter(Boolean);
+    var avgMood=moods.length?Math.round(moods.reduce(function(s,m){ return s+m; },0)/moods.length):0;
+    var bestDay=dates[0], worstDay=dates[0];
+    dates.forEach(function(d){ if(dayPct[d]>=dayPct[bestDay]) bestDay=d; if(dayPct[d]<=dayPct[worstDay]) worstDay=d; });
+    var weekLabel=start.toLocaleDateString('en-GB',{month:'short',day:'numeric'})+' – '+end.toLocaleDateString('en-GB',{month:'short',day:'numeric',year:'numeric'});
+    var today=S.today, isCurrentWeek=offset===0;
+    var dayGridHTML='';
+    dates.forEach(function(d,i){
+      var mood=checkinMap[d]?checkinMap[d].mood:null;
+      var pct=dayPct[d], isToday=d===today;
+      var pctColor=pct>=80?'var(--primary)':pct>=50?'var(--accent)':'var(--danger)';
+      dayGridHTML+='<div class="week-day">';
+      dayGridHTML+='<div class="week-day-label" style="'+(isToday?'color:var(--primary);font-weight:800':'')+'">'+ DAY_LABELS[i]+'</div>';
+      dayGridHTML+='<div class="week-day-mood" style="'+(isToday?'border:2px solid var(--primary)':'')+'">'+(mood?MOOD_EMOJIS[mood]:'·')+'</div>';
+      dayGridHTML+='<div class="week-day-pct" style="color:'+pctColor+'">'+pct+'%</div>';
+      dayGridHTML+='</div>';
+    });
+    // FIX #1: XSS - Escape habit names in weekly review
+    var habitHTML='';
+    habits.forEach(function(h){
+      var dots='';
+      dates.forEach(function(d){ var done=logMap[h.id]&&logMap[h.id][d], isTd=d===today; dots+='<div class="week-dot'+(done?' done':'')+(isTd?' today':'')+'" title="'+d+'"></div>'; });
+      habitHTML+='<div class="week-habit-row"><div class="week-habit-name" title="'+Security.escapeAttr(h.name)+'">'+Security.esc(h.name)+'</div><div class="week-habit-dots">'+dots+'</div></div>';
+    });
+    var html='';
+    html+='<div class="card"><div class="week-nav">';
+    // Issue #4 FIX: Use App.renderWeeklyReview for consistency
+    html+='<button onclick="App.renderWeeklyReview('+(offset-1)+')" style="padding:6px 10px;border-radius:8px;background:var(--surface2);font-size:.8rem">‹ Prev</button>';
+    html+='<span>'+weekLabel+'</span>';
+    html+='<button onclick="App.renderWeeklyReview('+(offset+1)+')" style="padding:6px 10px;border-radius:8px;background:var(--surface2);font-size:.8rem;opacity:'+(isCurrentWeek?'0.3':'1')+'" '+(isCurrentWeek?'disabled':'')+'>Next ›</button>';
+    html+='</div><div class="week-day-grid">'+dayGridHTML+'</div>';
+    html+='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">';
+    html+='<div style="text-align:center;background:var(--surface2);border-radius:10px;padding:10px"><div style="font-size:1.3rem;font-weight:700;color:var(--primary)">'+weekPct+'%</div><div style="font-size:.65rem;color:var(--text-l);margin-top:2px">Week Score</div></div>';
+    html+='<div style="text-align:center;background:var(--surface2);border-radius:10px;padding:10px"><div style="font-size:1.3rem">'+(avgMood?MOOD_EMOJIS[avgMood]:'—')+'</div><div style="font-size:.65rem;color:var(--text-l);margin-top:2px">Avg Mood</div></div>';
+    html+='<div style="text-align:center;background:var(--surface2);border-radius:10px;padding:10px"><div style="font-size:1rem;font-weight:700;color:var(--primary)">'+weekDone+'/'+weekTotal+'</div><div style="font-size:.65rem;color:var(--text-l);margin-top:2px">Habits Done</div></div>';
+    html+='</div></div>';
+    html+='<div class="card"><div class="card-title">Habit Breakdown</div>'+habitHTML+'</div>';
+    var bestName=new Date(bestDay+'T00:00:00').toLocaleDateString('en-GB',{weekday:'long'});
+    var worstName=new Date(worstDay+'T00:00:00').toLocaleDateString('en-GB',{weekday:'long'});
+    html+='<div class="card" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">';
+    html+='<div><div style="font-size:.7rem;font-weight:700;color:var(--text-l);text-transform:uppercase;margin-bottom:4px">Best Day</div><div style="font-size:.9rem;font-weight:600">'+bestName+'</div><div style="font-size:.75rem;color:var(--primary)">'+dayPct[bestDay]+'% complete</div></div>';
+    html+='<div><div style="font-size:.7rem;font-weight:700;color:var(--text-l);text-transform:uppercase;margin-bottom:4px">Needs Work</div><div style="font-size:.9rem;font-weight:600">'+worstName+'</div><div style="font-size:.75rem;color:var(--danger)">'+dayPct[worstDay]+'% complete</div></div>';
+    html+='</div>';
+    // FIX #1: XSS - Escape saved reflection
+    html+='<div class="card" style="margin-bottom:0"><div class="card-title">Weekly Reflection</div>';
+    html+='<textarea id="wr-reflection" class="review-textarea" placeholder="What went well? What will you improve?">'+Security.esc(savedReflection||'')+'</textarea>';
+    html+='<div style="display:flex;align-items:center;gap:10px;margin-top:10px">';
+    html+='<button class="btn btn-primary btn-sm" onclick="App.saveWeeklyReview(\''+weekKey+'\')">Save</button>';
+    html+='<span id="wr-save-status" style="font-size:.75rem;color:var(--text-l)"></span></div></div>';
+    panel.innerHTML = html;
+  } catch (err) {
+    // Issue #5 FIX: Handle errors gracefully
+    console.error('Weekly review load failed:', err);
+    if (panel) {
+      panel.innerHTML = '<div class="card"><div style="text-align:center;padding:24px;color:var(--danger)">Failed to load weekly review. Please try again.</div></div>';
+    }
+  }
 }
 
 function scheduleFridayReminder(){
