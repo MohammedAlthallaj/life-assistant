@@ -9,6 +9,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Life">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
+<link rel="icon" type="image/x-icon" href="favicon.ico">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
@@ -1196,7 +1199,9 @@ async function renderToday() {
 
 async function renderPartnerMood(date) {
   const card = el('partner-mood-card');
-  if (!S.partnerProfile || !S.partnerProfile.show_mood_to_partner) {
+  // Default to true if show_mood_to_partner is null/undefined
+  const partnerShowsMood = S.partnerProfile?.show_mood_to_partner !== false;
+  if (!S.partnerProfile || !partnerShowsMood) {
     card.classList.add('hidden');
     return;
   }
@@ -2675,6 +2680,26 @@ async function setupNotifications() {
     </div>`;
   }
 })();
+
+// ─── SERVICE WORKER REGISTRATION ──────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => {
+        console.log('SW registered:', reg.scope);
+        // Check for updates
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              toast('Update available! Refresh to update.', 4000);
+            }
+          });
+        });
+      })
+      .catch(err => console.error('SW registration failed:', err));
+  });
+}
 </script>
 </body>
 </html>

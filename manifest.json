@@ -1,26 +1,42 @@
 {
   "name": "Life Assistant",
   "short_name": "Life",
-  "description": "Personal daily life assistant — habits, books, Quran, notes",
-  "start_url": "/index.html",
+  "description": "Islamic habit tracking & personal life management for couples",
+  "start_url": "/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#1B4332",
   "theme_color": "#1B4332",
+  "categories": ["lifestyle", "productivity", "health"],
   "icons": [
     {
-      "src": "icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any"
+      "src": "favicon-96x96.png",
+      "sizes": "96x96",
+      "type": "image/png"
     },
     {
-      "src": "icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "maskable"
+      "src": "web-app-manifest-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "web-app-manifest-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ],
-  "categories": ["productivity", "lifestyle"],
-  "lang": "en"
+  "shortcuts": [
+    {
+      "name": "Today",
+      "url": "/?view=today",
+      "icons": [{ "src": "web-app-manifest-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Quran Tracker",
+      "url": "/?view=quran",
+      "icons": [{ "src": "web-app-manifest-192x192.png", "sizes": "192x192" }]
+    }
+  ]
 }
