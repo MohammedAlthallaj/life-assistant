@@ -62,7 +62,10 @@ a{color:var(--primary-m);text-decoration:none}
 .pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:4px}
 .pin-key{padding:16px;font-size:1.3rem;font-weight:500;border-radius:12px;background:var(--surface2);color:var(--text);text-align:center;transition:all .12s;-webkit-tap-highlight-color:transparent}
 .pin-key:active{background:var(--primary);color:#fff;transform:scale(.95)}
+.pin-key:disabled{opacity:0.4;cursor:not-allowed}
+.pin-key:disabled:active{background:var(--surface2);color:var(--text);transform:none}
 .pin-error{color:var(--danger);font-size:.82rem;text-align:center;min-height:20px;margin-top:4px}
+.pin-lockout{color:var(--danger);font-size:.85rem;text-align:center;padding:12px;background:var(--danger-l);border-radius:8px;margin-top:12px}
 
 /* ─── APP SHELL ───────────────────────────────────────── */
 #app{display:flex;flex-direction:column;min-height:100vh}
@@ -303,7 +306,7 @@ section.view.active{display:block}
       <div class="pin-dot" id="pd2"></div>
       <div class="pin-dot" id="pd3"></div>
     </div>
-    <div class="pin-pad">
+    <div class="pin-pad" id="pin-pad">
       <button class="pin-key" onclick="App.pinKey('1')">1</button>
       <button class="pin-key" onclick="App.pinKey('2')">2</button>
       <button class="pin-key" onclick="App.pinKey('3')">3</button>
@@ -318,6 +321,7 @@ section.view.active{display:block}
       <button class="pin-key" onclick="App.pinKey('back')" style="font-size:1.5rem">⌫</button>
     </div>
     <div class="pin-error" id="pin-error"></div>
+    <div class="pin-lockout hidden" id="pin-lockout"></div>
   </div>
 </div>
 
@@ -493,8 +497,8 @@ section.view.active{display:block}
 
         <h3>🔒 Change PIN</h3>
         <div class="card" style="margin:0 0 10px">
-          <div class="field"><label>New PIN</label><input id="new-pin" type="number" placeholder="4–6 digits"></div>
-          <div class="field"><label>Confirm PIN</label><input id="confirm-pin" type="number" placeholder="Repeat PIN"></div>
+          <div class="field"><label>New PIN</label><input id="new-pin" type="password" inputmode="numeric" pattern="[0-9]*" placeholder="4–6 digits" maxlength="6"></div>
+          <div class="field"><label>Confirm PIN</label><input id="confirm-pin" type="password" inputmode="numeric" pattern="[0-9]*" placeholder="Repeat PIN" maxlength="6"></div>
           <button class="btn btn-primary btn-sm mt-8" onclick="App.changePIN()">Update PIN</button>
         </div>
 
@@ -512,7 +516,7 @@ section.view.active{display:block}
         </div>
 
         <div style="text-align:center;margin-top:32px;color:var(--text-l);font-size:.75rem">
-          Life Assistant v1.0 — Phase 1<br>
+          Life Assistant v1.1 — Security Update<br>
           <button onclick="App.logout()" style="color:var(--danger);font-size:.78rem;margin-top:8px">Sign Out</button>
         </div>
       </div>
@@ -568,13 +572,231 @@ section.view.active{display:block}
 <script>
 'use strict';
 
+// ═══════════════════════════════════════════════════════════════════════════
+// SECURITY FIX #1: XSS SANITIZATION
+// ═══════════════════════════════════════════════════════════════════════════
+const Security = {
+  // HTML escape to prevent XSS - escapes all dangerous characters
+  escapeHtml: function(str) {
+    if (str === null || str === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = String(str);
+    return div.innerHTML;
+  },
+  
+  // Alias for shorter usage
+  esc: function(str) {
+    return this.escapeHtml(str);
+  },
+  
+  // Sanitize URL - only allow http, https, and relative URLs
+  sanitizeUrl: function(url) {
+    if (!url) return '';
+    const str = String(url).trim();
+    // Only allow http://, https://, or relative paths
+    if (str.startsWith('http://') || str.startsWith('https://') || str.startsWith('/')) {
+      return this.escapeHtml(str);
+    }
+    // Add https:// if no protocol
+    if (!str.includes('://')) {
+      return this.escapeHtml('https://' + str);
+    }
+    return '#'; // Invalid URL
+  },
+  
+  // Sanitize for use in HTML attributes (extra escaping for quotes)
+  escapeAttr: function(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#x27;');
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SECURITY FIX #2: PIN RATE LIMITING + DEVICE-BOUND SALT
+// ═══════════════════════════════════════════════════════════════════════════
+const PinSecurity = {
+  MAX_ATTEMPTS: 3,
+  BASE_LOCKOUT_MS: 30000, // 30 seconds initial lockout
+  
+  // Get or create device-specific salt (makes extracted hash useless on other devices)
+  getDeviceSalt: function() {
+    let salt = localStorage.getItem('device_salt');
+    if (!salt) {
+      // Generate random 32-byte salt
+      const array = new Uint8Array(32);
+      crypto.getRandomValues(array);
+      salt = Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+      localStorage.setItem('device_salt', salt);
+    }
+    return salt;
+  },
+  
+  // Get current lockout state
+  getLockoutState: function() {
+    const data = localStorage.getItem('pin_lockout');
+    if (!data) return { attempts: 0, lockedUntil: 0, lockoutCount: 0 };
+    try {
+      return JSON.parse(data);
+    } catch (e) {
+      return { attempts: 0, lockedUntil: 0, lockoutCount: 0 };
+    }
+  },
+  
+  // Save lockout state
+  saveLockoutState: function(state) {
+    localStorage.setItem('pin_lockout', JSON.stringify(state));
+  },
+  
+  // Check if currently locked out
+  isLockedOut: function() {
+    const state = this.getLockoutState();
+    if (state.lockedUntil > Date.now()) {
+      return true;
+    }
+    // Lockout expired, but don't reset attempts until successful login
+    return false;
+  },
+  
+  // Get remaining lockout time in seconds
+  getRemainingLockout: function() {
+    const state = this.getLockoutState();
+    const remaining = state.lockedUntil - Date.now();
+    return remaining > 0 ? Math.ceil(remaining / 1000) : 0;
+  },
+  
+  // Record a failed attempt
+  recordFailedAttempt: function() {
+    const state = this.getLockoutState();
+    state.attempts = (state.attempts || 0) + 1;
+    
+    if (state.attempts >= this.MAX_ATTEMPTS) {
+      // Calculate lockout duration with exponential backoff
+      // 30s, 60s, 120s, 240s, ... up to 1 hour max
+      state.lockoutCount = (state.lockoutCount || 0) + 1;
+      const lockoutMs = Math.min(
+        this.BASE_LOCKOUT_MS * Math.pow(2, state.lockoutCount - 1),
+        3600000 // Max 1 hour
+      );
+      state.lockedUntil = Date.now() + lockoutMs;
+      state.attempts = 0; // Reset attempts counter after triggering lockout
+    }
+    
+    this.saveLockoutState(state);
+    return state;
+  },
+  
+  // Record successful login - reset everything
+  recordSuccess: function() {
+    this.saveLockoutState({ attempts: 0, lockedUntil: 0, lockoutCount: 0 });
+  },
+  
+  // Get attempts remaining before lockout
+  getAttemptsRemaining: function() {
+    const state = this.getLockoutState();
+    return Math.max(0, this.MAX_ATTEMPTS - state.attempts);
+  }
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SECURITY FIX #3: SECURE SESSION TOKEN
+// ═══════════════════════════════════════════════════════════════════════════
+const SessionSecurity = {
+  TOKEN_KEY: 'session_token',
+  TOKEN_EXPIRY_KEY: 'session_expiry',
+  SESSION_DURATION_MS: 24 * 60 * 60 * 1000, // 24 hours
+  
+  // Generate a secure session token
+  generateToken: async function(pinHash) {
+    const timestamp = Date.now().toString();
+    const random = crypto.getRandomValues(new Uint8Array(16));
+    const randomHex = Array.from(random).map(b => b.toString(16).padStart(2, '0')).join('');
+    const tokenData = pinHash + ':' + timestamp + ':' + randomHex;
+    
+    // Hash the token data
+    const encoder = new TextEncoder();
+    const data = encoder.encode(tokenData);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const token = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    
+    return { token, timestamp };
+  },
+  
+  // Create and store session
+  createSession: async function(pinHash) {
+    const { token, timestamp } = await this.generateToken(pinHash);
+    const expiry = Date.now() + this.SESSION_DURATION_MS;
+    
+    // Store token and verification data
+    sessionStorage.setItem(this.TOKEN_KEY, token);
+    sessionStorage.setItem(this.TOKEN_EXPIRY_KEY, expiry.toString());
+    
+    // Store a verification hash that combines token + pinHash
+    // This prevents token forgery even if someone sets a random token
+    const verifyData = token + ':' + pinHash;
+    const verifyHash = await this.hash(verifyData);
+    sessionStorage.setItem('session_verify', verifyHash);
+    
+    return token;
+  },
+  
+  // Verify session is valid
+  isValidSession: async function(pinHash) {
+    const token = sessionStorage.getItem(this.TOKEN_KEY);
+    const expiry = sessionStorage.getItem(this.TOKEN_EXPIRY_KEY);
+    const storedVerify = sessionStorage.getItem('session_verify');
+    
+    if (!token || !expiry || !storedVerify) {
+      return false;
+    }
+    
+    // Check expiry
+    if (Date.now() > parseInt(expiry, 10)) {
+      this.clearSession();
+      return false;
+    }
+    
+    // Verify the token matches what we expect
+    const verifyData = token + ':' + pinHash;
+    const computedVerify = await this.hash(verifyData);
+    
+    if (computedVerify !== storedVerify) {
+      this.clearSession();
+      return false;
+    }
+    
+    return true;
+  },
+  
+  // Clear session
+  clearSession: function() {
+    sessionStorage.removeItem(this.TOKEN_KEY);
+    sessionStorage.removeItem(this.TOKEN_EXPIRY_KEY);
+    sessionStorage.removeItem('session_verify');
+  },
+  
+  // Helper: SHA-256 hash
+  hash: async function(str) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(str);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+};
+
 // ─── CONFIG ───────────────────────────────────────────────────
 const CFG = {
   url: 'https://bbltrktchxsmshmamoxw.supabase.co',
   key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJibHRya3RjaHhzbXNobWFtb3h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyNjE5NTYsImV4cCI6MjA4OTgzNzk1Nn0.7DzDKznQD7_MzkK00v_rXwpg9rkrKiezv0xzcL79Q8A',
-  get pinHash(){return localStorage.getItem('pin_hash')||''},
-  set pinHash(v){localStorage.setItem('pin_hash',v)},
-  isConfigured(){return !!this.pinHash}
+  get pinHash(){ return localStorage.getItem('pin_hash') || ''; },
+  set pinHash(v){ localStorage.setItem('pin_hash', v); },
+  isConfigured(){ return !!this.pinHash; }
 };
 
 // ─── SUPABASE CLIENT ──────────────────────────────────────────
@@ -607,14 +829,18 @@ const S = {
   _settingPin: false,
   prayerTimings: null,
   goodStreaks: {},
-  viewDate: new Date().toISOString().split('T')[0]
+  viewDate: new Date().toISOString().split('T')[0],
+  lockoutInterval: null
 };
 
 // ─── UTILITIES ────────────────────────────────────────────────
 async function sha256(str){
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  // Include device salt for PIN hashing
+  const saltedStr = str + ':' + PinSecurity.getDeviceSalt();
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(saltedStr));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
+
 function toast(msg, dur){
   if(dur===undefined) dur=2200;
   const t=document.getElementById('toast');
@@ -808,6 +1034,7 @@ async function renderToday(){
   updateRing();
 }
 
+// FIX #1: XSS - Escape habit names
 function renderHabitList(containerId, habits, logMap, interactive, streaks){
   if(interactive === undefined) interactive = true;
   if(streaks === undefined) streaks = {};
@@ -819,20 +1046,23 @@ function renderHabitList(containerId, habits, logMap, interactive, streaks){
     var streak = streaks[h.id] || 0;
     var pillClass = streak >= 7 ? 'hot' : '';
     var pillLabel = streak >= 2 ? ('🔥 ' + streak + 'd') : streak === 1 ? '1d' : '';
-    html += '<div class="habit-row' + (done ? ' done' : '') + '" id="hr-' + h.id + '">';
+    var escapedId = Security.escapeAttr(h.id);
+    var escapedName = Security.esc(h.name); // XSS FIX: Escape habit name
+    html += '<div class="habit-row' + (done ? ' done' : '') + '" id="hr-' + escapedId + '">';
     if(interactive){
-      html += '<div class="habit-check' + (done ? ' checked' : '') + '" onclick="App.toggleHabit(\'' + h.id + '\',\'' + containerId + '\')">';
+      html += '<div class="habit-check' + (done ? ' checked' : '') + '" onclick="App.toggleHabit(\'' + escapedId + '\',\'' + containerId + '\')">';
     } else {
       html += '<div class="habit-check' + (done ? ' checked' : '') + '" style="cursor:default">';
     }
     html += svgCheck() + '</div>';
-    html += '<div class="habit-name">' + h.name + '</div>';
+    html += '<div class="habit-name">' + escapedName + '</div>';
     if(streak > 0){ html += '<div class="streak-pill ' + pillClass + '">' + pillLabel + '</div>'; }
     html += '</div>';
   });
   c.innerHTML = html;
 }
 
+// FIX #1: XSS - Escape bad habit names
 async function renderBadHabits(habits,date){
   const c=el('bad-habits-list');
   if(!habits.length){c.innerHTML='<div class="empty-state" style="padding:16px"><p>No bad habits tracked. Add some in Settings.</p></div>';return;}
@@ -843,16 +1073,18 @@ async function renderBadHabits(habits,date){
     S.badSlipDates[h.id] = hadSlip;
     var streakDisplay = streak === Infinity ? '∞' : streak;
     var isDanger = streak < 3 && streak !== Infinity;
+    var escapedId = Security.escapeAttr(h.id);
+    var escapedName = Security.esc(h.name); // XSS FIX
     var slipBtn = hadSlip
       ? '<span class="text-muted" style="font-size:.75rem">Logged</span>'
-      : '<button class="slip-btn" onclick="App.logSlip(\'' + h.id + '\')">Log Slip</button>';
-    return '<div class="bad-habit-card" id="bhc-' + h.id + '">'
+      : '<button class="slip-btn" onclick="App.logSlip(\'' + escapedId + '\')">Log Slip</button>';
+    return '<div class="bad-habit-card" id="bhc-' + escapedId + '">'
       + '<div class="streak-badge' + (isDanger ? ' danger' : '') + '">'
       + '<div class="num">' + streakDisplay + '</div>'
       + '<div class="lbl">days</div>'
       + '</div>'
       + '<div class="bad-habit-info">'
-      + '<div class="bad-habit-name">' + h.name + '</div>'
+      + '<div class="bad-habit-name">' + escapedName + '</div>'
       + '<div class="bad-habit-meta">' + (hadSlip ? '⚠️ Slip logged today' : '✅ Clean today') + '</div>'
       + '</div>'
       + slipBtn
@@ -885,6 +1117,7 @@ async function renderTrackers(){
   else await renderQuran();
 }
 
+// FIX #1: XSS - Escape book data
 async function renderBooks(){
   const books=await DB.getBooks();
   S.books=books;
@@ -920,28 +1153,33 @@ function bookCardHTML(b, finished){
   var pct = b.total_pages ? Math.round(100*b.current_page/b.total_pages) : 0;
   var emojis = ['📗','📘','📙','📕','📒'];
   var emoji = emojis[b.title.charCodeAt(0) % emojis.length];
-  var logBtn = !finished ? '<button class="btn btn-accent btn-sm" onclick="App.logReading(\'' + b.id + '\')">📄 Log Pages</button>' : '';
-  var finBtn = !finished ? '<button class="btn btn-primary btn-sm" onclick="App.finishBook(\'' + b.id + '\')">✅ Finished</button>' : '';
-  var notesDiv = b.personal_notes ? '<div style="font-size:.78rem;color:var(--text-m);margin-top:8px;font-style:italic">' + b.personal_notes + '</div>' : '';
+  var escapedId = Security.escapeAttr(b.id);
+  var escapedTitle = Security.esc(b.title); // XSS FIX
+  var escapedAuthor = Security.esc(b.author || 'Unknown Author'); // XSS FIX
+  var escapedNotes = Security.esc(b.personal_notes || ''); // XSS FIX
+  var logBtn = !finished ? '<button class="btn btn-accent btn-sm" onclick="App.logReading(\'' + escapedId + '\')">📄 Log Pages</button>' : '';
+  var finBtn = !finished ? '<button class="btn btn-primary btn-sm" onclick="App.finishBook(\'' + escapedId + '\')">✅ Finished</button>' : '';
+  var notesDiv = b.personal_notes ? '<div style="font-size:.78rem;color:var(--text-m);margin-top:8px;font-style:italic">' + escapedNotes + '</div>' : '';
   return '<div class="book-card">'
     + '<div class="book-header">'
     + '<div class="book-spine">' + emoji + '</div>'
     + '<div class="book-meta">'
-    + '<div class="book-title">' + b.title + '</div>'
-    + '<div class="book-author">' + (b.author || 'Unknown Author') + '</div>'
+    + '<div class="book-title">' + escapedTitle + '</div>'
+    + '<div class="book-author">' + escapedAuthor + '</div>'
     + '<div class="book-pages">p. ' + b.current_page + ' / ' + b.total_pages + '</div>'
     + '</div></div>'
     + '<div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:' + pct + '%"></div></div>'
     + '<div style="font-size:.75rem;color:var(--text-l);margin-bottom:8px">' + pct + '% complete</div>'
     + '<div class="book-actions">'
-    + '<button class="btn btn-secondary btn-sm" onclick="App.editBook(\'' + b.id + '\')">✏️ Update</button>'
+    + '<button class="btn btn-secondary btn-sm" onclick="App.editBook(\'' + escapedId + '\')">✏️ Update</button>'
     + logBtn + finBtn
-    + '<button class="btn btn-sm" style="color:var(--danger)" onclick="App.deleteBook(\'' + b.id + '\')">🗑</button>'
+    + '<button class="btn btn-sm" style="color:var(--danger)" onclick="App.deleteBook(\'' + escapedId + '\')">🗑</button>'
     + '</div>'
     + notesDiv
     + '</div><div style="height:1px;background:var(--border-l);margin:0 16px"></div>';
 }
 
+// FIX #1: XSS - Escape Quran data
 async function renderQuran(){
   const [q,total,wirdTarget]=await Promise.all([
     DB.getQuranToday(S.today),
@@ -951,7 +1189,7 @@ async function renderQuran(){
   S.quranToday=q;
   const target=parseInt(wirdTarget||100);
   const pages=(q && q.quran_pages)||0;
-  const surah=(q && q.current_surah)||'—';
+  const surah=Security.esc((q && q.current_surah)||'—'); // XSS FIX
   const juz=(q && q.current_juz)||'—';
   const wirdDone=(q && q.wird_completed)||false;
 
@@ -981,7 +1219,7 @@ async function renderQuran(){
         <input type="number" id="q-pages" value="${pages}" min="0" placeholder="0">
       </div>
       <div class="field"><label>Current Surah</label>
-        <input type="text" id="q-surah" value="${(q && q.current_surah)||''}" placeholder="Al-Baqarah">
+        <input type="text" id="q-surah" value="${Security.escapeAttr((q && q.current_surah)||'')}" placeholder="Al-Baqarah">
       </div>
       <div class="field"><label>Current Juz</label>
         <input type="number" id="q-juz" value="${(q && q.current_juz)||''}" min="1" max="30" placeholder="1–30">
@@ -1004,6 +1242,7 @@ async function renderNotes(){
   else await renderLinksList();
 }
 
+// FIX #1: XSS - Escape notes content
 async function renderNotesList(){
   const notes=await DB.getNotes();
   S.notes=notes;
@@ -1013,42 +1252,50 @@ async function renderNotesList(){
     return;
   }
   var noteRows = notes.map(function(n){
+    var escapedId = Security.escapeAttr(n.id);
+    var escapedContent = Security.esc(n.content); // XSS FIX
     var reminderBadge = (n.is_reminder && n.reminder_date)
       ? '<div class="note-reminder-badge">🔔 ' + fmtTs(n.reminder_date) + '</div>'
       : '';
     var delSvg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
-    return '<div class="note-row' + (n.completed ? ' completed' : '') + '" id="note-' + n.id + '">'
-      + '<div class="note-complete-btn' + (n.completed ? ' done' : '') + '" onclick="App.toggleNote(\'' + n.id + '\',' + n.completed + ')">'
+    return '<div class="note-row' + (n.completed ? ' completed' : '') + '" id="note-' + escapedId + '">'
+      + '<div class="note-complete-btn' + (n.completed ? ' done' : '') + '" onclick="App.toggleNote(\'' + escapedId + '\',' + n.completed + ')">'
       + svgCheck() + '</div>'
       + '<div style="flex:1">'
-      + '<div class="note-content">' + n.content + '</div>'
+      + '<div class="note-content">' + escapedContent + '</div>'
       + reminderBadge
       + '<div class="note-meta">' + fmtTs(n.created_at) + '</div>'
       + '</div>'
-      + '<button class="del-btn" onclick="App.deleteNote(\'' + n.id + '\')">' + delSvg + '</button>'
+      + '<button class="del-btn" onclick="App.deleteNote(\'' + escapedId + '\')">' + delSvg + '</button>'
       + '</div>';
   });
   c.innerHTML = '<div class="habit-list" style="margin:12px 16px 0;padding:0">' + noteRows.join('') + '</div>';
 }
 
+// FIX #1: XSS - Escape ideas content
 async function renderIdeasList(){
   const ideas=await DB.getIdeas();
   S.ideas=ideas;
   const c=el('notes-content');
   if(!ideas.length){c.innerHTML='<div class="empty-state" style="margin-top:24px"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><p>No ideas captured yet.</p></div>';return;}
-	c.innerHTML='<div class="habit-list" style="margin:12px 16px 0;padding:0">'+
-    ideas.map(i=>`<div class="note-row" id="idea-${i.id}">
-      <div style="flex:1">
-        <div class="idea-category">${i.category||'General'}</div>
-        <div class="note-content">${i.content}</div>
-        <div class="note-meta">${fmtTs(i.created_at)}</div>
-      </div>
-      <button class="del-btn" onclick="App.deleteIdea('${i.id}')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-      </button>
-    </div>`).join('')+'</div>';
+  var ideaRows = ideas.map(function(i){
+    var escapedId = Security.escapeAttr(i.id);
+    var escapedContent = Security.esc(i.content); // XSS FIX
+    var escapedCategory = Security.esc(i.category || 'General'); // XSS FIX
+    var delSvg = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
+    return '<div class="note-row" id="idea-' + escapedId + '">'
+      + '<div style="flex:1">'
+      + '<div class="idea-category">' + escapedCategory + '</div>'
+      + '<div class="note-content">' + escapedContent + '</div>'
+      + '<div class="note-meta">' + fmtTs(i.created_at) + '</div>'
+      + '</div>'
+      + '<button class="del-btn" onclick="App.deleteIdea(\'' + escapedId + '\')">' + delSvg + '</button>'
+      + '</div>';
+  });
+  c.innerHTML = '<div class="habit-list" style="margin:12px 16px 0;padding:0">' + ideaRows.join('') + '</div>';
 }
 
+// FIX #1: XSS - Escape links data
 async function renderLinksList(){
   const links=await DB.getLinks();
   S.links=links;
@@ -1056,14 +1303,18 @@ async function renderLinksList(){
   if(!links.length){c.innerHTML='<div class="empty-state" style="margin-top:24px"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><p>No links saved yet.</p></div>';return;}
   var delSvgL = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>';
   var linkRows = links.map(function(l){
-    var notesDiv = l.notes ? '<div class="note-meta">' + l.notes + '</div>' : '';
-    return '<div class="note-row" id="link-' + l.id + '">'
+    var escapedId = Security.escapeAttr(l.id);
+    var escapedTitle = Security.esc(l.title || l.url); // XSS FIX
+    var escapedNotes = Security.esc(l.notes || ''); // XSS FIX
+    var escapedUrl = Security.sanitizeUrl(l.url); // XSS FIX - sanitize URL
+    var notesDiv = l.notes ? '<div class="note-meta">' + escapedNotes + '</div>' : '';
+    return '<div class="note-row" id="link-' + escapedId + '">'
       + '<div style="flex:1">'
-      + '<div class="note-content"><a href="' + l.url + '" target="_blank" rel="noopener">' + (l.title || l.url) + '</a></div>'
+      + '<div class="note-content"><a href="' + escapedUrl + '" target="_blank" rel="noopener noreferrer">' + escapedTitle + '</a></div>'
       + notesDiv
-      + '<div class="link-url">' + l.url + '</div>'
+      + '<div class="link-url">' + escapedUrl + '</div>'
       + '</div>'
-      + '<button class="del-btn" onclick="App.deleteLink(\'' + l.id + '\')">' + delSvgL + '</button>'
+      + '<button class="del-btn" onclick="App.deleteLink(\'' + escapedId + '\')">' + delSvgL + '</button>'
       + '</div>';
   });
   c.innerHTML = '<div class="habit-list" style="margin:12px 16px 0;padding:0">' + linkRows.join('') + '</div>';
@@ -1135,10 +1386,10 @@ async function renderAnalyticsStats(){
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:100,ticks:{callback:v=>v+'%'},grid:{color:'rgba(0,0,0,.05)'}},x:{grid:{display:false},ticks:{font:{size:10}}}}}
   });
 
-  // Habit bars
+  // Habit bars - FIX #1: XSS - Escape habit names
   el('habit-completion-bars').innerHTML=habits30.slice(0,12).map(h=>`
     <div class="habit-bar-row">
-      <div class="habit-bar-name" title="${h.name}">${h.name}</div>
+      <div class="habit-bar-name" title="${Security.escapeAttr(h.name)}">${Security.esc(h.name)}</div>
       <div class="habit-bar-track"><div class="habit-bar-fill" style="width:${h.pct}%"></div></div>
       <div class="habit-bar-pct">${h.pct}%</div>
     </div>`).join('');
@@ -1167,20 +1418,28 @@ async function renderSettings(){
   renderHabitManager('mgr-islamic',islamicAll,'islamic');
   renderHabitManager('mgr-regular',regularAll,'regular');
   renderHabitManager('mgr-bad',badAll,'bad');
+  
+  // Render notification status
+  renderNotifStatus();
 }
 
+// FIX #1: XSS - Escape habit names in manager
 function renderHabitManager(containerId,habits,type){
   const c=el(containerId);
   if(!habits.length){c.innerHTML=`<div class="text-muted" style="font-size:.82rem;padding:8px 0">No habits yet.</div>`;return;}
-  c.innerHTML=habits.map(h=>`
-  <div class="habit-mgr-row" id="mgr-${h.id}">
-    <div class="habit-mgr-name">${h.name}</div>
-    <label class="toggle" title="${h.is_active?'Active (tap to disable)':'Disabled (tap to enable)'}">
-      <input type="checkbox" ${h.is_active?'checked':''} onchange="App.toggleHabitActive('${h.id}',this.checked,'${type}')">
-      <span class="toggle-slider"></span>
-    </label>
-    <button class="btn btn-sm" style="color:var(--danger)" onclick="App.confirmDeleteHabit('${h.id}','${h.name}','${type}')">🗑</button>
-  </div>`).join('');
+  c.innerHTML=habits.map(h=>{
+    var escapedId = Security.escapeAttr(h.id);
+    var escapedName = Security.esc(h.name); // XSS FIX
+    var escapedNameAttr = Security.escapeAttr(h.name);
+    return `<div class="habit-mgr-row" id="mgr-${escapedId}">
+      <div class="habit-mgr-name">${escapedName}</div>
+      <label class="toggle" title="${h.is_active?'Active (tap to disable)':'Disabled (tap to enable)'}">
+        <input type="checkbox" ${h.is_active?'checked':''} onchange="App.toggleHabitActive('${escapedId}',this.checked,'${type}')">
+        <span class="toggle-slider"></span>
+      </label>
+      <button class="btn btn-sm" style="color:var(--danger)" onclick="App.confirmDeleteHabit('${escapedId}','${escapedNameAttr}','${type}')">🗑</button>
+    </div>`;
+  }).join('');
 }
 
 // ─── MODAL SYSTEM ─────────────────────────────────────────────
@@ -1194,6 +1453,37 @@ function openModal(title,bodyHTML,actions){
 function closeModal(e){
   // Close if: called programmatically (no event / no target), OR user clicked the backdrop
   if(!e||!e.target||e.target===el('modal-overlay')) el('modal-overlay').classList.remove('open');
+}
+
+// ─── LOCKOUT UI HELPERS ───────────────────────────────────────
+function updateLockoutUI() {
+  const lockoutEl = el('pin-lockout');
+  const pinPad = el('pin-pad');
+  
+  if (PinSecurity.isLockedOut()) {
+    const remaining = PinSecurity.getRemainingLockout();
+    lockoutEl.classList.remove('hidden');
+    lockoutEl.innerHTML = `🔒 Too many failed attempts.<br>Try again in <strong>${remaining}</strong> seconds.`;
+    
+    // Disable all pin keys
+    pinPad.querySelectorAll('.pin-key').forEach(btn => btn.disabled = true);
+    
+    // Set up countdown
+    if (S.lockoutInterval) clearInterval(S.lockoutInterval);
+    S.lockoutInterval = setInterval(() => {
+      if (!PinSecurity.isLockedOut()) {
+        clearInterval(S.lockoutInterval);
+        lockoutEl.classList.add('hidden');
+        pinPad.querySelectorAll('.pin-key').forEach(btn => btn.disabled = false);
+      } else {
+        const r = PinSecurity.getRemainingLockout();
+        lockoutEl.innerHTML = `🔒 Too many failed attempts.<br>Try again in <strong>${r}</strong> seconds.`;
+      }
+    }, 1000);
+  } else {
+    lockoutEl.classList.add('hidden');
+    pinPad.querySelectorAll('.pin-key').forEach(btn => btn.disabled = false);
+  }
 }
 
 // ─── APP OBJECT (public API bound to DOM events) ──────────────
@@ -1271,10 +1561,14 @@ const App = {
     else if(action==='add-link') this.addLinkModal();
   },
 
-  // ── PIN ──
-
-
-	pinKey(k){
+  // ── PIN ── (SECURITY FIX #2 & #3)
+  pinKey(k){
+    // Check lockout first
+    if (PinSecurity.isLockedOut()) {
+      updateLockoutUI();
+      return;
+    }
+    
     const buf=S.pinBuffer;
     if(k==='clear') S.pinBuffer='';
     else if(k==='back') S.pinBuffer=buf.slice(0,-1);
@@ -1283,11 +1577,19 @@ const App = {
     el('pin-error').textContent='';
     for(let i=0;i<4;i++) el('pd'+i).classList.toggle('filled',i<l);
     
-    // ✅ FIXED: Only auto-check when buffer has at least 4 digits
+    // Auto-check when buffer has at least 4 digits
     if(S.pinBuffer.length >= 4) this.checkPIN();
   },
 
   async checkPIN(){
+    // Check lockout
+    if (PinSecurity.isLockedOut()) {
+      updateLockoutUI();
+      S.pinBuffer = '';
+      for(var k=0;k<4;k++) el('pd'+k).classList.remove('filled');
+      return;
+    }
+    
     if(S._settingPin){
       if(S.pinBuffer.length < 4){ el('pin-error').textContent='Use at least 4 digits'; S.pinBuffer=''; return; }
       const hash = await sha256(S.pinBuffer);
@@ -1302,18 +1604,34 @@ const App = {
       setTimeout(function(){ el('pin-error').textContent=''; }, 2000);
       return;
     }
+    
     const hash=await sha256(S.pinBuffer);
     if(hash===CFG.pinHash){
-      sessionStorage.setItem('auth','1');
+      // SUCCESS - FIX #2: Record success to reset lockout
+      PinSecurity.recordSuccess();
+      
+      // FIX #3: Create secure session token
+      await SessionSecurity.createSession(CFG.pinHash);
+      
       el('pin-screen').classList.add('hidden');
       el('app').classList.remove('hidden');
       await renderToday();
       setupNotifications();
     } else {
-      el('pin-error').textContent='Incorrect PIN';
+      // FAILURE - FIX #2: Record failed attempt
+      const state = PinSecurity.recordFailedAttempt();
+      const remaining = PinSecurity.getAttemptsRemaining();
+      
+      if (PinSecurity.isLockedOut()) {
+        el('pin-error').textContent = '';
+        updateLockoutUI();
+      } else {
+        el('pin-error').textContent = `Incorrect PIN. ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining.`;
+        setTimeout(function(){ el('pin-error').textContent=''; }, 3000);
+      }
+      
       S.pinBuffer='';
       for(var j=0;j<4;j++) el('pd'+j).classList.remove('filled');
-      setTimeout(function(){ el('pin-error').textContent=''; },1500);
     }
   },
 
@@ -1321,20 +1639,26 @@ const App = {
     const np=el('new-pin').value.trim();
     const cp=el('confirm-pin').value.trim();
     if(!np||np.length<4){ toast('PIN must be 4+ digits');return; }
+    if(!/^\d+$/.test(np)){ toast('PIN must contain only numbers');return; }
     if(np!==cp){ toast('PINs do not match');return; }
     const hash=await sha256(np);
     CFG.pinHash=hash;
     await DB.setSetting('pin_hash',hash).catch(function(){});
+    
+    // Invalidate current session - user must re-login with new PIN
+    SessionSecurity.clearSession();
+    
     el('new-pin').value=''; el('confirm-pin').value='';
     toast('PIN updated ✓');
   },
 
   logout: function(){
-    sessionStorage.removeItem('auth');
+    SessionSecurity.clearSession();
     el('app').classList.add('hidden');
     el('pin-screen').classList.remove('hidden');
     S.pinBuffer='';
     for(var i=0;i<4;i++) el('pd'+i).classList.remove('filled');
+    updateLockoutUI(); // Check if locked out
   },
 
   // ── Today ──
@@ -1397,10 +1721,10 @@ const App = {
     openModal('Update Book',`
       <div class="field"><label>Current Page</label><input id="m-cp" type="number" value="${b.current_page}" min="0" max="${b.total_pages}"></div>
       <div class="field"><label>Total Pages</label><input id="m-tp" type="number" value="${b.total_pages}" min="1"></div>
-      <div class="field"><label>Notes</label><textarea id="m-notes" rows="3" placeholder="Personal notes...">${b.personal_notes||''}</textarea></div>
+      <div class="field"><label>Notes</label><textarea id="m-notes" rows="3" placeholder="Personal notes...">${Security.esc(b.personal_notes||'')}</textarea></div>
     `,[
       {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal()'},
-      {label:'Save',cls:'btn-primary',fn:`App.saveBook('${id}')`}
+      {label:'Save',cls:'btn-primary',fn:`App.saveBook('${Security.escapeAttr(id)}')`}
     ]);
   },
 
@@ -1416,7 +1740,7 @@ const App = {
       <div class="field"><label>Pages Read Today</label><input id="m-pr" type="number" placeholder="0" min="0"></div>
     `,[
       {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal()'},
-      {label:'Log',cls:'btn-primary',fn:`App.saveReadingLog('${id}')`}
+      {label:'Log',cls:'btn-primary',fn:`App.saveReadingLog('${Security.escapeAttr(id)}')`}
     ]);
   },
 
@@ -1593,7 +1917,7 @@ const App = {
     el(inputId).value='';
     await renderSettings();
     if(type!=='bad') await renderToday();
-    toast(`${name} added ✓`);
+    toast(`${Security.esc(name)} added ✓`);
   },
 
   async toggleHabitActive(id,active,type){
@@ -1604,10 +1928,10 @@ const App = {
 
   confirmDeleteHabit(id,name,type){
     openModal('Delete Habit',`
-      <p>Delete <strong>${name}</strong> permanently? This cannot be undone and all history will be removed.</p>
+      <p>Delete <strong>${Security.esc(name)}</strong> permanently? This cannot be undone and all history will be removed.</p>
     `,[
       {label:'Cancel',cls:'btn-secondary',fn:'App.closeModal()'},
-      {label:'Delete',cls:'btn-danger',fn:`App.doDeleteHabit('${id}','${type}')`}
+      {label:'Delete',cls:'btn-danger',fn:`App.doDeleteHabit('${Security.escapeAttr(id)}','${type}')`}
     ]);
   },
 
@@ -1669,6 +1993,18 @@ const App = {
     toast('CSV exported ✓');
   },
 
+  // ── Notifications ── (FIX: Added missing method)
+  async requestNotifications(){
+    const granted = await requestNotificationPermission();
+    renderNotifStatus();
+    if(granted){
+      toast('Notifications enabled ✓');
+      setupNotifications();
+    } else {
+      toast('Notifications blocked or denied');
+    }
+  },
+
   // ── Utility ──
   closeModal(){ closeModal(); },
 
@@ -1693,10 +2029,6 @@ const journalSave=debounce(async function(val){
   setTimeout(function(){ el('journal-save-status').textContent=''; }, 2000);
 }, 900);
 document.getElementById('journal-area').addEventListener('input',e=>journalSave(e.target.value));
-
-// ─── PIN AUTO-SUBMIT ──────────────────────────────────────────
-// Auto-checks when PIN reaches expected length
-// PIN auto-submits at 4 digits (handled inside pinKey)
 
 // ─── SERVICE WORKER ───────────────────────────────────────────
 
@@ -1886,11 +2218,12 @@ async function renderWeeklyReview(offset){
     dayGridHTML+='<div class="week-day-pct" style="color:'+pctColor+'">'+pct+'%</div>';
     dayGridHTML+='</div>';
   });
+  // FIX #1: XSS - Escape habit names in weekly review
   var habitHTML='';
   habits.forEach(function(h){
     var dots='';
     dates.forEach(function(d){ var done=logMap[h.id]&&logMap[h.id][d], isTd=d===today; dots+='<div class="week-dot'+(done?' done':'')+(isTd?' today':'')+'" title="'+d+'"></div>'; });
-    habitHTML+='<div class="week-habit-row"><div class="week-habit-name" title="'+h.name+'">'+h.name+'</div><div class="week-habit-dots">'+dots+'</div></div>';
+    habitHTML+='<div class="week-habit-row"><div class="week-habit-name" title="'+Security.escapeAttr(h.name)+'">'+Security.esc(h.name)+'</div><div class="week-habit-dots">'+dots+'</div></div>';
   });
   var html='';
   html+='<div class="card"><div class="week-nav">';
@@ -1910,8 +2243,9 @@ async function renderWeeklyReview(offset){
   html+='<div><div style="font-size:.7rem;font-weight:700;color:var(--text-l);text-transform:uppercase;margin-bottom:4px">Best Day</div><div style="font-size:.9rem;font-weight:600">'+bestName+'</div><div style="font-size:.75rem;color:var(--primary)">'+dayPct[bestDay]+'% complete</div></div>';
   html+='<div><div style="font-size:.7rem;font-weight:700;color:var(--text-l);text-transform:uppercase;margin-bottom:4px">Needs Work</div><div style="font-size:.9rem;font-weight:600">'+worstName+'</div><div style="font-size:.75rem;color:var(--danger)">'+dayPct[worstDay]+'% complete</div></div>';
   html+='</div>';
+  // FIX #1: XSS - Escape saved reflection
   html+='<div class="card" style="margin-bottom:0"><div class="card-title">Weekly Reflection</div>';
-  html+='<textarea id="wr-reflection" class="review-textarea" placeholder="What went well? What will you improve?">'+(savedReflection||'')+'</textarea>';
+  html+='<textarea id="wr-reflection" class="review-textarea" placeholder="What went well? What will you improve?">'+Security.esc(savedReflection||'')+'</textarea>';
   html+='<div style="display:flex;align-items:center;gap:10px;margin-top:10px">';
   html+='<button class="btn btn-primary btn-sm" onclick="App.saveWeeklyReview(\''+weekKey+'\')">Save</button>';
   html+='<span id="wr-save-status" style="font-size:.75rem;color:var(--text-l)"></span></div></div>';
@@ -1986,7 +2320,7 @@ function renderNotifStatus(){
   else s.innerHTML='<span style="color:var(--accent)">⚠️ Not enabled yet — tap button below</span>';
 }
 document.addEventListener('visibilitychange', function(){
-  if(!document.hidden && sessionStorage.getItem('auth')==='1') checkDueRemindersNow();
+  if(!document.hidden && sessionStorage.getItem(SessionSecurity.TOKEN_KEY)) checkDueRemindersNow();
 });
 initSW();
 
@@ -1994,6 +2328,16 @@ initSW();
 (async function init(){
   try {
     initSB();
+    
+    // Check for existing valid session (FIX #3)
+    if(CFG.pinHash && await SessionSecurity.isValidSession(CFG.pinHash)){
+      el('app').classList.remove('hidden');
+      await renderToday();
+      setupNotifications();
+      return;
+    }
+    
+    // No PIN set - show setup screen
     if(!CFG.pinHash){
       el('pin-screen').classList.remove('hidden');
       if(el('pin-title')) el('pin-title').textContent = 'Set Your PIN';
@@ -2001,19 +2345,17 @@ initSW();
       S._settingPin = true;
       return;
     }
-    if(sessionStorage.getItem('auth')==='1'){
-      el('app').classList.remove('hidden');
-      await renderToday();
-      setupNotifications();
-    } else {
-      el('pin-screen').classList.remove('hidden');
-    }
+    
+    // PIN exists but no valid session - show login
+    el('pin-screen').classList.remove('hidden');
+    updateLockoutUI(); // Check if locked out
+    
   } catch(e){
     console.error('Init failed:', e);
     document.body.innerHTML = '<div style="font-family:sans-serif;padding:32px;text-align:center">'
       + '<div style="font-size:2rem;margin-bottom:12px">⚠️</div>'
       + '<div style="font-size:1.1rem;font-weight:600">App failed to load</div>'
-      + '<div style="font-size:.85rem;color:#666;margin:8px 0">' + (e && e.message ? e.message : 'Unknown error') + '</div>'
+      + '<div style="font-size:.85rem;color:#666;margin:8px 0">' + (e && e.message ? Security.esc(e.message) : 'Unknown error') + '</div>'
       + '<button onclick="location.reload()" style="padding:10px 24px;background:#1B4332;color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:8px">Try Again</button>'
       + '</div>';
   }
