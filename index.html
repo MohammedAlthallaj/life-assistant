@@ -1274,16 +1274,26 @@ const App = {
   // ── PIN ──
 
 
-  pinKey(k){
-    const buf=S.pinBuffer;
-    if(k==='clear') S.pinBuffer='';
-    else if(k==='back') S.pinBuffer=buf.slice(0,-1);
-    else if(buf.length<6) S.pinBuffer=buf+k;
-    const l=S.pinBuffer.length;
-    el('pin-error').textContent='';
-    for(let i=0;i<4;i++) el('pd'+i).classList.toggle('filled',i<l);
-    if(S.pinBuffer.length>=CFG.pinHash.length-60) this.checkPIN();
-  },
+pinKey(k) {
+  const buf = S.pinBuffer;
+  if (k === 'clear') {
+    S.pinBuffer = '';
+  } else if (k === 'back') {
+    S.pinBuffer = buf.slice(0, -1);
+  } else if (buf.length < 4) {        // Limit to 4 digits only
+    S.pinBuffer = buf + k;
+  }
+  const l = S.pinBuffer.length;
+  el('pin-error').textContent = '';
+  for (let i = 0; i < 4; i++) {
+    el('pd' + i).classList.toggle('filled', i < l);
+  }
+
+  // Only check when exactly 4 digits are entered
+  if (l === 4) {
+    this.checkPIN();
+  }
+}
 
   async checkPIN(){
     if(S._settingPin){
