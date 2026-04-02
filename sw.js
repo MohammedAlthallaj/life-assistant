@@ -1,186 +1,127 @@
-// ═══════════════════════════════════════════════════════════════════════════
-// LIFE ASSISTANT - SERVICE WORKER
-// ═══════════════════════════════════════════════════════════════════════════
-// Issue #7 Fix: Creates missing service worker to prevent console errors
-// and enable offline functionality + background notifications
-
-const CACHE_NAME = 'life-assistant-v1.1';
-const STATIC_ASSETS = [
+// Life Assistant v2.0 - Couples Edition Service Worker
+const CACHE_NAME = 'life-assistant-v2';
+const ASSETS = [
   '/',
   '/index.html',
-  '/manifest.json'
+  'https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Sora:wght@300;400;500;600&display=swap',
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js',
+  'https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js'
 ];
 
-// Store Supabase credentials received from main thread
-let sbCredentials = null;
-
-// ─── INSTALL ─────────────────────────────────────────────────────
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('[SW] Caching static assets');
-        return cache.addAll(STATIC_ASSETS).catch(err => {
-          // Don't fail install if some assets aren't available
-          console.warn('[SW] Some assets failed to cache:', err);
-        });
-      })
-      .then(() => self.skipWaiting())
+// Install
+self.addEventListener('install', e => {
+  e.waitUntil(
+    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
   );
+  self.skipWaiting();
 });
 
-// ─── ACTIVATE ────────────────────────────────────────────────────
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys()
-      .then(cacheNames => {
-        return Promise.all(
-          cacheNames
-            .filter(name => name !== CACHE_NAME)
-            .map(name => {
-              console.log('[SW] Deleting old cache:', name);
-              return caches.delete(name);
-            })
-        );
-      })
-      .then(() => self.clients.claim())
+// Activate
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+    )
   );
+  self.clients.claim();
 });
 
-// ─── FETCH (Network-first with cache fallback) ───────────────────
-self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
+// Fetch
+self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
   
-  // Skip non-GET requests
-  if (event.request.method !== 'GET') return;
-  
-  // Skip cross-origin requests (Supabase API, fonts, CDN)
-  if (url.origin !== location.origin) return;
-  
-  event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        // Clone and cache successful responses
-        if (response.ok) {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, responseClone);
-          });
-        }
-        return response;
-      })
-      .catch(() => {
-        // Network failed, try cache
-        return caches.match(event.request).then(cachedResponse => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          // Return offline page for navigation requests
-          if (event.request.mode === 'navigate') {
-            return caches.match('/index.html');
-          }
-          return new Response('Offline', { status: 503 });
-        });
-      })
-  );
-});
-
-// ─── MESSAGE HANDLER (Receive credentials from main app) ─────────
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SB_CREDS') {
-    sbCredentials = {
-      url: event.data.url,
-      key: event.data.key
-    };
-    console.log('[SW] Received Supabase credentials');
-  }
-});
-
-// ─── PERIODIC SYNC (Check reminders in background) ───────────────
-self.addEventListener('periodicsync', (event) => {
-  if (event.tag === 'check-reminders') {
-    event.waitUntil(checkReminders());
-  }
-});
-
-async function checkReminders() {
-  if (!sbCredentials) {
-    console.log('[SW] No Supabase credentials, skipping reminder check');
+  // Network-first for API calls
+  if (e.request.url.includes('supabase.co') || e.request.url.includes('aladhan.com')) {
+    e.respondWith(
+      fetch(e.request)
+        .then(res => {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+          return res;
+        })
+        .catch(() => caches.match(e.request))
+    );
     return;
   }
   
-  try {
-    const now = new Date().toISOString();
-    const response = await fetch(
-      `${sbCredentials.url}/rest/v1/notes?is_reminder=eq.true&completed=eq.false&reminder_date=lte.${now}&select=id,content,reminder_date`,
-      {
-        headers: {
-          'apikey': sbCredentials.key,
-          'Authorization': `Bearer ${sbCredentials.key}`
+  // Cache-first for assets
+  e.respondWith(
+    caches.match(e.request).then(cached => {
+      if (cached) return cached;
+      return fetch(e.request).then(res => {
+        if (res.ok) {
+          const clone = res.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
         }
-      }
-    );
-    
-    if (!response.ok) return;
-    
-    const notes = await response.json();
-    
-    for (const note of notes) {
-      await self.registration.showNotification('📋 Reminder', {
-        body: note.content,
-        icon: '/icon.svg',
-        tag: `reminder-${note.id}`,
-        requireInteraction: true,
-        data: { noteId: note.id }
+        return res;
       });
-    }
-  } catch (err) {
-    console.error('[SW] Reminder check failed:', err);
-  }
-}
-
-// ─── NOTIFICATION CLICK ──────────────────────────────────────────
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  
-  // Focus existing window or open new one
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then(windowClients => {
-        // Try to focus existing window
-        for (const client of windowClients) {
-          if (client.url.includes(location.origin) && 'focus' in client) {
-            return client.focus();
-          }
-        }
-        // Open new window
-        if (clients.openWindow) {
-          return clients.openWindow('/');
-        }
-      })
+    })
   );
 });
 
-// ─── PUSH NOTIFICATIONS (Future-ready) ───────────────────────────
-self.addEventListener('push', (event) => {
-  if (!event.data) return;
-  
-  try {
-    const data = event.data.json();
-    const options = {
-      body: data.body || 'You have a notification',
-      icon: '/icon.svg',
-      badge: '/icon.svg',
-      tag: data.tag || 'default',
-      data: data.data || {}
-    };
-    
-    event.waitUntil(
-      self.registration.showNotification(data.title || 'Life Assistant', options)
-    );
-  } catch (err) {
-    console.error('[SW] Push handling failed:', err);
+// Push notifications
+self.addEventListener('push', e => {
+  const data = e.data ? e.data.json() : { title: 'Life Assistant', body: 'Time to check in!' };
+  e.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: '/icon-192.png',
+      badge: '/icon-192.png',
+      vibrate: [200, 100, 200],
+      tag: data.tag || 'reminder',
+      data: data
+    })
+  );
+});
+
+// Notification click
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  e.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+      for (const client of clientList) {
+        if (client.url.includes('life-assistant') && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow('/');
+      }
+    })
+  );
+});
+
+// Background sync for offline actions
+self.addEventListener('sync', e => {
+  if (e.tag === 'sync-checkins') {
+    e.waitUntil(syncPendingCheckins());
   }
 });
 
-console.log('[SW] Service Worker loaded - Life Assistant v1.1');
+async function syncPendingCheckins() {
+  // Sync any pending offline changes when back online
+  const pending = await getPendingChanges();
+  for (const change of pending) {
+    try {
+      await fetch(change.url, {
+        method: change.method,
+        headers: change.headers,
+        body: JSON.stringify(change.body)
+      });
+      await removePendingChange(change.id);
+    } catch (e) {
+      console.error('Sync failed:', e);
+    }
+  }
+}
+
+function getPendingChanges() {
+  return new Promise(resolve => {
+    // In a real implementation, this would read from IndexedDB
+    resolve([]);
+  });
+}
+
+function removePendingChange(id) {
+  return Promise.resolve();
+}
