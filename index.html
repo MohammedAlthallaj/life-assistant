@@ -1036,14 +1036,14 @@ async function renderIdeasList(){
   S.ideas=ideas;
   const c=el('notes-content');
   if(!ideas.length){c.innerHTML='<div class="empty-state" style="margin-top:24px"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><p>No ideas captured yet.</p></div>';return;}
-  c.innerHTML='<div class="habit-list" style="margin:12px 16px 0;padding:0">'+
+	c.innerHTML='<div class="habit-list" style="margin:12px 16px 0;padding:0">'+
     ideas.map(i=>`<div class="note-row" id="idea-${i.id}">
       <div style="flex:1">
         <div class="idea-category">${i.category||'General'}</div>
         <div class="note-content">${i.content}</div>
         <div class="note-meta">${fmtTs(i.created_at)}</div>
       </div>
-      '<button class="del-btn" onclick="App.deleteIdea(\'' + i.id + '\')">
+      <button class="del-btn" onclick="App.deleteIdea('${i.id}')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
       </button>
     </div>`).join('')+'</div>';
@@ -1176,10 +1176,10 @@ function renderHabitManager(containerId,habits,type){
   <div class="habit-mgr-row" id="mgr-${h.id}">
     <div class="habit-mgr-name">${h.name}</div>
     <label class="toggle" title="${h.is_active?'Active (tap to disable)':'Disabled (tap to enable)'}">
-      <input type="checkbox" ${h.is_active?'checked':''} onchange="App.toggleHabitActive(\'' + h.id + '\',this.checked,\'' + type + '\')">
+      <input type="checkbox" ${h.is_active?'checked':''} onchange="App.toggleHabitActive('${h.id}',this.checked,'${type}')">
       <span class="toggle-slider"></span>
     </label>
-    <button class="btn btn-sm" style="color:var(--danger)" onclick="App.confirmDeleteHabit(\'' + h.id + '\',\'' + h.name + '\',\'' + type + '\')">🗑</button>
+    <button class="btn btn-sm" style="color:var(--danger)" onclick="App.confirmDeleteHabit('${h.id}','${h.name}','${type}')">🗑</button>
   </div>`).join('');
 }
 
@@ -1274,26 +1274,16 @@ const App = {
   // ── PIN ──
 
 
-pinKey(k) {
-  const buf = S.pinBuffer;
-  if (k === 'clear') {
-    S.pinBuffer = '';
-  } else if (k === 'back') {
-    S.pinBuffer = buf.slice(0, -1);
-  } else if (buf.length < 4) {        // Limit to 4 digits only
-    S.pinBuffer = buf + k;
-  }
-  const l = S.pinBuffer.length;
-  el('pin-error').textContent = '';
-  for (let i = 0; i < 4; i++) {
-    el('pd' + i).classList.toggle('filled', i < l);
-  }
-
-  // Only check when exactly 4 digits are entered
-  if (l === 4) {
-    this.checkPIN();
-  }
-}
+  pinKey(k){
+    const buf=S.pinBuffer;
+    if(k==='clear') S.pinBuffer='';
+    else if(k==='back') S.pinBuffer=buf.slice(0,-1);
+    else if(buf.length<6) S.pinBuffer=buf+k;
+    const l=S.pinBuffer.length;
+    el('pin-error').textContent='';
+    for(let i=0;i<4;i++) el('pd'+i).classList.toggle('filled',i<l);
+    if(S.pinBuffer.length>=CFG.pinHash.length-60) this.checkPIN();
+  },
 
   async checkPIN(){
     if(S._settingPin){
