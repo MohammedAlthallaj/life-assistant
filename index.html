@@ -1274,7 +1274,7 @@ const App = {
   // ── PIN ──
 
 
-pinKey(k){
+	pinKey(k){
     const buf=S.pinBuffer;
     if(k==='clear') S.pinBuffer='';
     else if(k==='back') S.pinBuffer=buf.slice(0,-1);
