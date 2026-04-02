@@ -322,6 +322,11 @@ section.view.active{display:block}
     </div>
     <div class="pin-error" id="pin-error"></div>
     <div class="pin-lockout hidden" id="pin-lockout"></div>
+    <div id="forgot-pin-link" style="text-align:center;margin-top:16px">
+      <button onclick="App.forgotPIN()" style="font-size:.8rem;color:var(--text-l);text-decoration:underline;background:none;border:none;cursor:pointer">
+        Forgot PIN? Reset it
+      </button>
+    </div>
   </div>
 </div>
 
@@ -516,7 +521,7 @@ section.view.active{display:block}
         </div>
 
         <div style="text-align:center;margin-top:32px;color:var(--text-l);font-size:.75rem">
-          Life Assistant v1.4 — Bug Fixes<br>
+          Life Assistant v1.5 — PIN Reset Fix<br>
           <button onclick="App.logout()" style="color:var(--danger);font-size:.78rem;margin-top:8px">Sign Out</button>
         </div>
       </div>
@@ -1894,6 +1899,54 @@ const App = {
     S.pinBuffer='';
     for(var i=0;i<4;i++) el('pd'+i).classList.remove('filled');
     updateLockoutUI(); // Check if locked out
+  },
+
+  // Forgot PIN - allows user to reset their PIN
+  forgotPIN: async function() {
+    const confirmed = await this.confirm(
+      '⚠️ Reset your PIN?\n\nThis will delete your current PIN and let you create a new one. Your data will NOT be deleted.'
+    );
+    
+    if (!confirmed) return;
+    
+    // Clear PIN from everywhere
+    localStorage.removeItem('pin_hash');
+    localStorage.removeItem('pin_salt');
+    localStorage.removeItem('device_salt');
+    CFG._pinHash = null;
+    CFG._pinSalt = null;
+    CFG._pinLoaded = false;
+    
+    // Clear from Supabase
+    try {
+      await sb.from('app_settings').delete().eq('key', 'pin_hash');
+      await sb.from('app_settings').delete().eq('key', 'pin_salt');
+    } catch (e) {
+      console.warn('Could not clear PIN from cloud:', e);
+    }
+    
+    // Clear session
+    SessionSecurity.clearSession();
+    PinSecurity.recordSuccess(); // Reset lockout
+    
+    // Show PIN setup screen
+    S._settingPin = true;
+    S.pinBuffer = '';
+    for(var i=0;i<4;i++) el('pd'+i).classList.remove('filled');
+    
+    if(el('pin-title')) el('pin-title').textContent = 'Set New PIN';
+    if(el('pin-subtitle')) el('pin-subtitle').textContent = 'Choose a 4-digit PIN';
+    if(el('pin-error')) el('pin-error').textContent = '';
+    if(el('pin-lockout')) el('pin-lockout').classList.add('hidden');
+    if(el('forgot-pin-link')) el('forgot-pin-link').style.display = 'none';
+    
+    // Enable PIN pad
+    const pinPad = el('pin-pad');
+    if (pinPad) {
+      pinPad.querySelectorAll('.pin-key').forEach(btn => btn.disabled = false);
+    }
+    
+    toast('Enter a new PIN');
   },
 
   // ── Today ──
