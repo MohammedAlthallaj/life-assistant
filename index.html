@@ -197,6 +197,20 @@ section.view.active{display:block}
 .notes-tabs{display:flex;gap:8px;padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border-l)}
 .notes-tab{padding:8px 16px;border-radius:20px;font-size:.82rem;font-weight:600;color:var(--text-m);background:var(--surface2);transition:all .15s}
 .notes-tab.active{background:var(--primary);color:#fff}
+/* ─── NOTES + LINKS SPLIT VIEW ──────────────────────────────── */
+.nl-split{display:grid;grid-template-columns:1fr 1fr;min-height:300px}
+.nl-col{display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--border-l)}
+.nl-col:last-child{border-right:none}
+.nl-col-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border-l);background:var(--surface);position:sticky;top:var(--header-h);z-index:5}
+.nl-col-title{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-l)}
+.nl-add-btn{width:26px;height:26px;border-radius:50%;background:var(--primary);color:#fff;font-size:1rem;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;transition:background .15s;flex-shrink:0}
+.nl-add-btn:hover{background:var(--primary-m)}
+.nl-empty{padding:24px 12px;text-align:center;color:var(--text-l);font-size:.8rem;line-height:1.5}
+@media(max-width:580px){
+  .nl-split{grid-template-columns:1fr}
+  .nl-col{border-right:none;border-bottom:2px solid var(--border-l)}
+  .nl-col:last-child{border-bottom:none}
+}
 .note-item{padding:14px 16px;border-bottom:1px solid var(--border-l);display:flex;gap:12px;align-items:flex-start}
 .note-item:last-child{border-bottom:none}
 .note-check{width:22px;height:22px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
@@ -481,11 +495,30 @@ section.view.active{display:block}
     <!-- ─── NOTES VIEW ────────────────────────────────────── -->
     <section id="view-notes" class="view">
       <div class="notes-tabs">
-        <button class="notes-tab active" onclick="App.switchNoteTab('notes',this)">📝 Notes</button>
+        <button class="notes-tab active" onclick="App.switchNoteTab('combined',this)">📝 Notes &amp; Links</button>
         <button class="notes-tab" onclick="App.switchNoteTab('ideas',this)">💡 Ideas</button>
-        <button class="notes-tab" onclick="App.switchNoteTab('links',this)">🔗 Links</button>
       </div>
-      <div id="notes-content"></div>
+      <!-- Split view: Notes (left/top) + Links (right/bottom) -->
+      <div id="nl-combined-view" class="nl-split">
+        <div class="nl-col">
+          <div class="nl-col-header">
+            <span class="nl-col-title">📝 Notes</span>
+            <button class="nl-add-btn" onclick="App.addNoteModal()" title="New note">+</button>
+          </div>
+          <div id="nl-notes-panel"></div>
+        </div>
+        <div class="nl-col">
+          <div class="nl-col-header">
+            <span class="nl-col-title">🔗 Links</span>
+            <button class="nl-add-btn" onclick="App.addLinkModal()" title="Save link">+</button>
+          </div>
+          <div id="nl-links-panel"></div>
+        </div>
+      </div>
+      <!-- Ideas view -->
+      <div id="nl-ideas-view" class="hidden">
+        <div id="notes-content"></div>
+      </div>
     </section>
 
     <!-- ─── ANALYTICS VIEW ────────────────────────────────── -->
@@ -780,7 +813,7 @@ const S = {
   today: new Date().toISOString().split('T')[0],
   view: 'today',
   trackerTab: 'books',
-  noteTab: 'notes',
+  noteTab: 'combined',
   // Profile
   profileId: null,
   profile: null,
@@ -1450,61 +1483,91 @@ async function renderNotes() {
   el('header-title').textContent = 'Notes & Ideas';
   el('header-sub').textContent = '';
   el('header-actions').innerHTML = '';
-  el('fab').classList.remove('hidden');
-  el('fab').dataset.action = 'add-note';
-  
-  if (S.noteTab === 'notes') await renderNotesList();
-  else if (S.noteTab === 'ideas') await renderIdeasList();
-  else await renderLinksList();
+
+  if (S.noteTab === 'ideas') {
+    el('fab').classList.remove('hidden');
+    el('fab').dataset.action = 'add-idea';
+    el('nl-combined-view').classList.add('hidden');
+    el('nl-ideas-view').classList.remove('hidden');
+    await renderIdeasList();
+  } else {
+    // combined: notes + links side by side — FAB hidden (inline + buttons used)
+    el('fab').classList.add('hidden');
+    el('nl-combined-view').classList.remove('hidden');
+    el('nl-ideas-view').classList.add('hidden');
+    await renderCombinedView();
+  }
 }
 
-async function renderNotesList() {
-  const notes = await DB.getNotes();
+// Fetch notes + links in parallel, paint both panels
+async function renderCombinedView() {
+  const [notes, links] = await Promise.all([DB.getNotes(), DB.getLinks()]);
   S.notes = notes;
-  const c = el('notes-content');
-  
-  if (!notes.length) {
-    c.innerHTML = '<div class="empty-state" style="margin-top:24px"><p>No notes yet. Tap + to add.</p></div>';
+  S.links = links;
+  paintNotesPanel(notes);
+  paintLinksPanel(links);
+}
+
+function paintNotesPanel(notes) {
+  var c = el('nl-notes-panel');
+  if (!c) return;
+  var mine = notes.filter(function(n){ return n.profile_id === S.profileId; });
+  var partner = notes.filter(function(n){ return n.profile_id !== S.profileId && n.is_shared; });
+  if (!mine.length && !partner.length) {
+    c.innerHTML = '<div class="nl-empty">No notes yet.<br>Tap <strong>+</strong> to add one.</div>';
     return;
   }
-  
-  const myNotes = notes.filter(n => n.profile_id === S.profileId && !n.is_shared);
-  const sharedNotes = notes.filter(n => n.is_shared);
-  
-  let html = '<div class="habit-list" style="margin:12px 16px">';
-  
-  if (myNotes.length) {
-    html += '<div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:var(--text-l);padding:12px 16px 8px">📝 My Notes</div>';
-    html += myNotes.map(n => noteItemHTML(n)).join('');
+  var html = '';
+  if (mine.length) html += mine.map(function(n){ return noteItemHTML(n, false); }).join('');
+  if (partner.length) {
+    html += '<div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-l);padding:8px 14px 4px;background:var(--surface2)">💕 Partner</div>';
+    html += partner.map(function(n){ return noteItemHTML(n, true); }).join('');
   }
-  
-  if (sharedNotes.length) {
-    html += '<div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:var(--text-l);padding:12px 16px 8px">💕 Shared</div>';
-    html += sharedNotes.map(n => noteItemHTML(n, true)).join('');
-  }
-  
-  html += '</div>';
   c.innerHTML = html;
 }
 
-function noteItemHTML(n, showOwner = false) {
-  const ownerEmoji = S.profiles.find(p => p.id === n.profile_id)?.emoji || '';
-  return `
-    <div class="note-item">
-      <div class="note-check${n.completed ? ' done' : ''}" onclick="App.toggleNote('${n.id}',${n.completed})">${svgCheck()}</div>
-      <div style="flex:1">
-        <div class="note-content">${Security.esc(n.content)}</div>
-        <div class="note-meta">
-          ${showOwner ? ownerEmoji + ' · ' : ''}
-          ${n.is_reminder && n.reminder_date ? '⏰ ' + fmtTs(n.reminder_date) : fmtTs(n.created_at)}
-          ${n.is_shared ? '<span class="shared-badge">Shared</span>' : ''}
-        </div>
-      </div>
-      <div class="note-actions">
-        <button class="btn btn-sm" style="color:var(--danger)" onclick="App.deleteNote('${n.id}')">🗑</button>
-      </div>
-    </div>
-  `;
+function paintLinksPanel(links) {
+  var c = el('nl-links-panel');
+  if (!c) return;
+  var mine = links.filter(function(l){ return l.profile_id === S.profileId; });
+  var partner = links.filter(function(l){ return l.profile_id !== S.profileId && l.is_shared; });
+  if (!mine.length && !partner.length) {
+    c.innerHTML = '<div class="nl-empty">No links saved.<br>Tap <strong>+</strong> to save one.</div>';
+    return;
+  }
+  var html = '';
+  if (mine.length) html += mine.map(function(l){ return linkItemHTML(l, false); }).join('');
+  if (partner.length) {
+    html += '<div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-l);padding:8px 14px 4px;background:var(--surface2)">💕 Partner</div>';
+    html += partner.map(function(l){ return linkItemHTML(l, true); }).join('');
+  }
+  c.innerHTML = html;
+}
+
+async function renderNotesList() {
+  // Refresh only the notes panel (used after add/delete/toggle)
+  var notes = await DB.getNotes();
+  S.notes = notes;
+  paintNotesPanel(notes);
+}
+
+function noteItemHTML(n, showOwner) {
+  if (showOwner === undefined) showOwner = false;
+  var _p = S.profiles.find(function(p){ return p.id === n.profile_id; });
+  var ownerEmoji = _p ? _p.emoji : '';
+  var checkCls = n.completed ? ' done' : '';
+  var timePart = (n.is_reminder && n.reminder_date) ? ('⏰ ' + fmtTs(n.reminder_date)) : fmtTs(n.created_at);
+  var ownerPart = showOwner ? (ownerEmoji + ' · ') : '';
+  var sharedBadge = n.is_shared ? '<span class="shared-badge">Shared</span>' : '';
+  return '<div class="note-item">'
+    + '<div class="note-check' + checkCls + '" onclick="App.toggleNote(\'' + n.id + '\',' + n.completed + ')">' + svgCheck() + '</div>'
+    + '<div style="flex:1">'
+    + '<div class="note-content">' + Security.esc(n.content) + '</div>'
+    + '<div class="note-meta">' + ownerPart + timePart + ' ' + sharedBadge + '</div>'
+    + '</div>'
+    + '<div class="note-actions">'
+    + '<button class="btn btn-sm" style="color:var(--danger)" onclick="App.deleteNote(\'' + n.id + '\')">🗑</button>'
+    + '</div></div>';
 }
 
 async function renderIdeasList() {
@@ -1529,52 +1592,29 @@ async function renderIdeasList() {
 }
 
 async function renderLinksList() {
-  const links = await DB.getLinks();
+  // Refresh only the links panel (used after add/delete)
+  var links = await DB.getLinks();
   S.links = links;
-  const c = el('notes-content');
-  
-  if (!links.length) {
-    c.innerHTML = '<div class="empty-state" style="margin-top:24px"><p>No links saved. Tap + to add.</p></div>';
-    return;
-  }
-  
-  const myLinks = links.filter(l => l.profile_id === S.profileId && !l.is_shared);
-  const sharedLinks = links.filter(l => l.is_shared);
-  
-  let html = '<div class="habit-list" style="margin:12px 16px">';
-  
-  if (myLinks.length) {
-    html += '<div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:var(--text-l);padding:12px 16px 8px">🔗 My Links</div>';
-    html += myLinks.map(l => linkItemHTML(l)).join('');
-  }
-  
-  if (sharedLinks.length) {
-    html += '<div style="font-size:.7rem;font-weight:700;text-transform:uppercase;color:var(--text-l);padding:12px 16px 8px">💕 Shared</div>';
-    html += sharedLinks.map(l => linkItemHTML(l, true)).join('');
-  }
-  
-  html += '</div>';
-  c.innerHTML = html;
+  paintLinksPanel(links);
 }
 
-function linkItemHTML(l, showOwner = false) {
-  const ownerEmoji = S.profiles.find(p => p.id === l.profile_id)?.emoji || '';
-  return `
-    <div class="link-card">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div style="flex:1;min-width:0">
-          <a href="${Security.sanitizeUrl(l.url)}" target="_blank" rel="noopener noreferrer" class="link-title">${Security.esc(l.title || l.url)}</a>
-          <div class="link-url">${Security.esc(l.url)}</div>
-          ${l.notes ? `<div class="link-notes">${Security.esc(l.notes)}</div>` : ''}
-          <div style="font-size:.7rem;color:var(--text-l);margin-top:4px">
-            ${showOwner ? ownerEmoji + ' · ' : ''}
-            ${l.is_shared ? '<span class="shared-badge">Shared</span>' : ''}
-          </div>
-        </div>
-        <button class="btn btn-sm" style="color:var(--danger)" onclick="App.deleteLink('${l.id}')">🗑</button>
-      </div>
-    </div>
-  `;
+function linkItemHTML(l, showOwner) {
+  if (showOwner === undefined) showOwner = false;
+  var _p = S.profiles.find(function(p){ return p.id === l.profile_id; });
+  var ownerEmoji = _p ? _p.emoji : '';
+  var notesHtml = l.notes ? '<div class="link-notes">' + Security.esc(l.notes) + '</div>' : '';
+  var ownerPart = showOwner ? (ownerEmoji + ' · ') : '';
+  var sharedBadge = l.is_shared ? '<span class="shared-badge">Shared</span>' : '';
+  return '<div class="link-card">'
+    + '<div style="display:flex;justify-content:space-between;align-items:flex-start">'
+    + '<div style="flex:1;min-width:0">'
+    + '<a href="' + Security.sanitizeUrl(l.url) + '" target="_blank" rel="noopener noreferrer" class="link-title">' + Security.esc(l.title || l.url) + '</a>'
+    + '<div class="link-url">' + Security.esc(l.url) + '</div>'
+    + notesHtml
+    + '<div style="font-size:.7rem;color:var(--text-l);margin-top:4px">' + ownerPart + sharedBadge + '</div>'
+    + '</div>'
+    + '<button class="btn btn-sm" style="color:var(--danger)" onclick="App.deleteLink(\'' + l.id + '\')">🗑</button>'
+    + '</div></div>';
 }
 
 // ─── RENDER: ANALYTICS ────────────────────────────────────────
@@ -2084,10 +2124,18 @@ const App = {
     document.querySelectorAll('.notes-tab').forEach(t => t.classList.remove('active'));
     el_.classList.add('active');
     S.noteTab = tab;
-    el('fab').dataset.action = 'add-' + tab.slice(0, -1);
-    if (tab === 'notes') { el('fab').dataset.action = 'add-note'; renderNotesList(); }
-    else if (tab === 'ideas') { el('fab').dataset.action = 'add-idea'; renderIdeasList(); }
-    else { el('fab').dataset.action = 'add-link'; renderLinksList(); }
+    if (tab === 'ideas') {
+      el('fab').classList.remove('hidden');
+      el('fab').dataset.action = 'add-idea';
+      el('nl-combined-view').classList.add('hidden');
+      el('nl-ideas-view').classList.remove('hidden');
+      renderIdeasList();
+    } else {
+      el('fab').classList.add('hidden');
+      el('nl-combined-view').classList.remove('hidden');
+      el('nl-ideas-view').classList.add('hidden');
+      renderCombinedView();
+    }
   },
   
   fabAction() {
