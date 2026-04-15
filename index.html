@@ -1759,6 +1759,10 @@ async function loadPrayerTimes() {
     S.prayerTimings = timings;
     renderPrayerCard(timings);
     startPrayerCountdown(timings);
+    // Schedule prayer notifications now that timings are loaded
+    if (Notification.permission === 'granted') {
+      schedulePrayerNotifs(timings);
+    }
   } catch (e) {
     const g = el('prayer-grid');
     if (g) g.innerHTML = '<div style="color:var(--text-l);font-size:.8rem;grid-column:1/-1;text-align:center;padding:8px">Unavailable offline</div>';
@@ -2611,10 +2615,44 @@ const App = {
   
   // Notifications
   async requestNotifications() {
-    const permission = await Notification.requestPermission();
+    if (!('Notification' in window)) {
+      toast('Notifications not supported on this browser');
+      return;
+    }
+    if (!isPWAInstalled()) {
+      openModal('Install App First', 
+        '<p style="font-size:.9rem;line-height:1.7">To enable notifications on iPhone, you need to install this app to your Home Screen first:</p>'
+        + '<ol style="font-size:.85rem;line-height:2;padding-left:20px;margin-top:8px">'
+        + '<li>Tap the <strong>Share</strong> button in Safari (box with arrow)</li>'
+        + '<li>Scroll down and tap <strong>Add to Home Screen</strong></li>'
+        + '<li>Tap <strong>Add</strong> in the top right</li>'
+        + '<li>Open the app from your Home Screen</li>'
+        + '<li>Come back to Settings and enable notifications</li>'
+        + '</ol>', 
+        [{ label: 'Got it', cls: 'btn-primary', fn: 'App.closeModal()' }]
+      );
+      return;
+    }
+    if (Notification.permission === 'denied') {
+      openModal('Notifications Blocked', 
+        '<p style="font-size:.9rem;line-height:1.7">Notifications are blocked. To fix this:</p>'
+        + '<ol style="font-size:.85rem;line-height:2;padding-left:20px;margin-top:8px">'
+        + '<li>Open iPhone <strong>Settings</strong></li>'
+        + '<li>Scroll down and tap <strong>Life Assistant</strong></li>'
+        + '<li>Tap <strong>Notifications</strong></li>'
+        + '<li>Turn on <strong>Allow Notifications</strong></li>'
+        + '</ol>',
+        [{ label: 'Got it', cls: 'btn-primary', fn: 'App.closeModal()' }]
+      );
+      return;
+    }
+    var permission = await Notification.requestPermission();
     renderNotifStatus();
     if (permission === 'granted') {
-      toast('Notifications enabled ✓');
+      await setupNotifications();
+      toast('Notifications enabled ✓ Prayer times and daily reminders active');
+    } else {
+      toast('Permission not granted');
     }
   },
   
@@ -2677,20 +2715,135 @@ const journalSave = debounce(async function(val) {
 document.getElementById('journal-area').addEventListener('input', e => journalSave(e.target.value));
 
 // ─── NOTIFICATIONS ─────────────────────────────────────────────
+// ─── NOTIFICATION SYSTEM ──────────────────────────────────────
+// All notification timers stored here so they can be cleared on re-schedule
+var _notifTimers = [];
+
+function _clearNotifTimers() {
+  _notifTimers.forEach(function(t) { clearTimeout(t); });
+  _notifTimers = [];
+}
+
+// Show a notification via the Service Worker (required for iOS PWA)
+async function showLocalNotif(title, body, tag) {
+  if (Notification.permission !== 'granted') return;
+  // Wait for SW to be ready
+  var reg = swRegistration;
+  if (!reg) {
+    try { reg = await navigator.serviceWorker.ready; } catch(e) { return; }
+  }
+  try {
+    await reg.showNotification(title, {
+      body: body,
+      icon: '/web-app-manifest-192x192.png',
+      badge: '/favicon-96x96.png',
+      tag: tag || 'life-assistant',
+      renotify: true
+    });
+  } catch(e) { console.warn('Notification failed:', e); }
+}
+
+// Returns ms until next occurrence of dubaiHour:dubaiMinute in Dubai timezone
+// Dubai = UTC+4, no DST ever
+function msUntilDubai(dubaiHour, dubaiMinute) {
+  var todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Dubai' });
+  var parts = todayStr.split('-').map(Number);
+  // Build target as UTC: Dubai time - 4 hours = UTC
+  var target = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2], dubaiHour - 4, dubaiMinute, 0, 0));
+  // If already passed, schedule for tomorrow
+  if (target.getTime() <= Date.now()) {
+    target.setUTCDate(target.getUTCDate() + 1);
+  }
+  return target.getTime() - Date.now();
+}
+
+// Schedule a notification that repeats every 24 hours at dubaiHour:dubaiMinute
+function scheduleDailyNotif(dubaiHour, dubaiMinute, title, body, tag) {
+  var delay = msUntilDubai(dubaiHour, dubaiMinute);
+  var hh = String(dubaiHour).padStart(2,'0'), mm = String(dubaiMinute).padStart(2,'0');
+  console.log('Scheduling "' + title + '" in ' + Math.round(delay/60000) + 'min (Dubai ' + hh + ':' + mm + ')');
+  var t = setTimeout(function() {
+    showLocalNotif(title, body, tag);
+    // Reschedule for the same time tomorrow
+    scheduleDailyNotif(dubaiHour, dubaiMinute, title, body, tag);
+  }, delay);
+  _notifTimers.push(t);
+}
+
+// Schedule prayer notifications for today (5min before, at adhan, 10min after)
+function schedulePrayerNotifs(timings) {
+  if (!timings || !S.today) return;
+  var now = Date.now();
+  PRAYERS.forEach(function(prayer) {
+    var dt = parsePrayerTime(timings[prayer], S.today).getTime();
+    // 5 minutes before
+    var b5 = dt - 5 * 60 * 1000;
+    if (b5 > now) {
+      _notifTimers.push(setTimeout(function() {
+        showLocalNotif('🕌 ' + prayer + ' in 5 minutes', 'Time to prepare for ' + prayer + ' prayer.', 'prayer-b5-' + prayer);
+      }, b5 - now));
+    }
+    // At adhan time
+    if (dt > now) {
+      _notifTimers.push(setTimeout(function() {
+        showLocalNotif('🕌 ' + prayer, 'الله أكبر · حي على الصلاة', 'prayer-athan-' + prayer);
+      }, dt - now));
+    }
+    // 10 minutes after — Sunnah reminder
+    var a10 = dt + 10 * 60 * 1000;
+    if (a10 > now) {
+      _notifTimers.push(setTimeout(function() {
+        showLocalNotif('🕌 ' + prayer + ' — Sunnah', "Don't forget the Sunnah after " + prayer + '.', 'prayer-sunnah-' + prayer);
+      }, a10 - now));
+    }
+  });
+  console.log('Prayer notifications scheduled for today (' + PRAYERS.length * 3 + ' timers)');
+}
+
+// Check if the app is installed as a PWA (required for iOS notifications)
+function isPWAInstalled() {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+         window.navigator.standalone === true;
+}
+
 function renderNotifStatus() {
-  const s = el('notif-status');
+  var s = el('notif-status');
   if (!s) return;
-  if (!('Notification' in window)) { s.innerHTML = 'Not supported'; return; }
-  const p = Notification.permission;
+  if (!('Notification' in window)) {
+    s.innerHTML = '<span style="color:var(--text-l)">Not supported in this browser</span>';
+    return;
+  }
+  if (!isPWAInstalled()) {
+    s.innerHTML = '<span style="color:var(--accent)">⚠️ Add app to Home Screen first</span>';
+    return;
+  }
+  var p = Notification.permission;
   if (p === 'granted') s.innerHTML = '<span style="color:var(--success)">✅ Enabled</span>';
-  else if (p === 'denied') s.innerHTML = '<span style="color:var(--danger)">❌ Blocked</span>';
-  else s.innerHTML = '<span style="color:var(--accent)">⚠️ Not enabled</span>';
+  else if (p === 'denied') s.innerHTML = '<span style="color:var(--danger)">❌ Blocked — enable in iPhone Settings</span>';
+  else s.innerHTML = '<span style="color:var(--accent)">⚠️ Not enabled yet</span>';
 }
 
 async function setupNotifications() {
-  if (Notification.permission === 'granted') {
-    // Setup any scheduled notifications here
+  if (Notification.permission !== 'granted') return;
+  _clearNotifTimers();
+  var name = (S.profile && S.profile.name) ? S.profile.name : 'there';
+  // ── 8:00 AM Dubai — morning reminder ──────────────────────────
+  scheduleDailyNotif(8, 0,
+    '🌅 Good morning, ' + name + '!',
+    'Start your day — log your habits and check in.',
+    'daily-morning'
+  );
+  // ── 10:00 PM Dubai — evening reminder ─────────────────────────
+  scheduleDailyNotif(22, 0,
+    '🌙 Evening check-in, ' + name,
+    "How was your day? Don't forget to log your habits and journal.",
+    'daily-evening'
+  );
+  // ── Prayer time notifications ──────────────────────────────────
+  if (S.prayerTimings) {
+    schedulePrayerNotifs(S.prayerTimings);
   }
+  console.log('Notifications set up ✓');
 }
 
 // ─── INIT ─────────────────────────────────────────────────────
@@ -2735,22 +2888,23 @@ async function setupNotifications() {
 })();
 
 // ─── SERVICE WORKER REGISTRATION ──────────────────────────────
+var swRegistration = null;
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
+  window.addEventListener('load', function() {
     navigator.serviceWorker.register('./sw.js')
-      .then(reg => {
+      .then(function(reg) {
+        swRegistration = reg;
         console.log('SW registered:', reg.scope);
-        // Check for updates
-        reg.addEventListener('updatefound', () => {
-          const newWorker = reg.installing;
-          newWorker.addEventListener('statechange', () => {
+        reg.addEventListener('updatefound', function() {
+          var newWorker = reg.installing;
+          newWorker.addEventListener('statechange', function() {
             if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
               toast('Update available! Refresh to update.', 4000);
             }
           });
         });
       })
-      .catch(err => console.error('SW registration failed:', err));
+      .catch(function(err) { console.error('SW registration failed:', err); });
   });
 }
 </script>
