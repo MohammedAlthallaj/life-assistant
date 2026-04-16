@@ -668,6 +668,9 @@ section.view.active{display:block}
 // Mohammad 🌙 & Zahraa 🌸
 // ═══════════════════════════════════════════════════════════════════════════
 
+// Declared at top so it's available when setupNotifications() runs inside init()
+var swRegistration = null;
+
 // ─── SECURITY: XSS SANITIZATION ───────────────────────────────────────────
 const Security = {
   escapeHtml: function(str) {
@@ -1208,8 +1211,8 @@ async function renderToday() {
   // Partner mood
   await renderPartnerMood(viewDate);
   
-  // Prayer times
-  loadPrayerTimes();
+  // Prayer times — only load for today (not past days)
+  if (isToday) loadPrayerTimes();
   
   // Compute streaks for good habits
   const goodHabitIds = [...islamic, ...regular].filter(h => h.is_active).map(h => h.id);
@@ -1235,7 +1238,7 @@ async function renderToday() {
 async function renderPartnerMood(date) {
   const card = el('partner-mood-card');
   // Default to true if show_mood_to_partner is null/undefined
-  const partnerShowsMood = S.partnerProfile?.show_mood_to_partner !== false;
+  var partnerShowsMood = !S.partnerProfile || S.partnerProfile.show_mood_to_partner !== false;
   if (!S.partnerProfile || !partnerShowsMood) {
     card.classList.add('hidden');
     return;
@@ -1260,44 +1263,45 @@ async function renderPartnerMood(date) {
 }
 
 function renderHabitList(containerId, habits, type) {
-  const c = el(containerId);
+  var c = el(containerId);
   if (!habits.length) {
-    c.innerHTML = `<div class="empty-state"><p>No ${type} habits yet</p></div>`;
+    c.innerHTML = '<div class="empty-state"><p>No ' + type + ' habits yet</p></div>';
     return;
   }
-  c.innerHTML = habits.map(h => {
-    const done = S.habitLogs[h.id] || false;
-    const streak = S.goodStreaks[h.id] || 0;
-    return `
-      <div class="habit-row${done ? ' done' : ''}" id="hr-${h.id}" onclick="App.toggleHabit('${h.id}','${containerId}')">
-        <div class="habit-check${done ? ' checked' : ''}">${svgCheck()}</div>
-        <div class="habit-info">
-          <div class="habit-name">${Security.esc(h.name)}</div>
-          ${streak > 0 ? `<div class="habit-streak">🔥 ${streak} day streak</div>` : ''}
-        </div>
-      </div>
-    `;
+  c.innerHTML = habits.map(function(h) {
+    var done = S.habitLogs[h.id] || false;
+    var streak = S.goodStreaks[h.id] || 0;
+    var streakHtml = streak > 0 ? '<div class="habit-streak">🔥 ' + streak + ' day streak</div>' : '';
+    var doneCls = done ? ' done' : '';
+    var checkCls = done ? ' checked' : '';
+    return '<div class="habit-row' + doneCls + '" id="hr-' + h.id + '" onclick="App.toggleHabit(\'' + h.id + '\',\'' + containerId + '\')">'
+      + '<div class="habit-check' + checkCls + '">' + svgCheck() + '</div>'
+      + '<div class="habit-info">'
+      + '<div class="habit-name">' + Security.esc(h.name) + '</div>'
+      + streakHtml
+      + '</div></div>';
   }).join('');
 }
 
 function renderBadHabitList(containerId, habits) {
-  const c = el(containerId);
+  var c = el(containerId);
   if (!habits.length) {
-    c.innerHTML = `<div class="empty-state"><p>No bad habits to avoid</p></div>`;
+    c.innerHTML = '<div class="empty-state"><p>No bad habits to avoid</p></div>';
     return;
   }
-  c.innerHTML = habits.map(h => {
-    const slipped = S.badSlipDates[h.id] && S.badSlipDates[h.id].includes(S.viewDate);
-    const streak = S.badStreaks[h.id] || 0;
-    return `
-      <div class="habit-row bad-habit-row${slipped ? ' slipped' : ''}" id="hr-${h.id}">
-        <div class="habit-check${slipped ? ' checked' : ''}" onclick="App.logSlip('${h.id}')">${svgCheck()}</div>
-        <div class="habit-info">
-          <div class="habit-name">${Security.esc(h.name)}</div>
-          <div class="habit-streak">${slipped ? '❌ Slipped today' : `✅ ${streak} days clean`}</div>
-        </div>
-      </div>
-    `;
+  var viewDate = S.viewDate || S.today;
+  c.innerHTML = habits.map(function(h) {
+    var slipped = S.badSlipDates[h.id] && S.badSlipDates[h.id].includes(viewDate);
+    var streak = S.badStreaks[h.id] || 0;
+    var slippedCls = slipped ? ' slipped' : '';
+    var checkCls = slipped ? ' checked' : '';
+    var streakLabel = slipped ? '❌ Slipped today' : ('✅ ' + streak + ' days clean');
+    return '<div class="habit-row bad-habit-row' + slippedCls + '" id="hr-' + h.id + '">'
+      + '<div class="habit-check' + checkCls + '" onclick="App.logSlip(\'' + h.id + '\')">' + svgCheck() + '</div>'
+      + '<div class="habit-info">'
+      + '<div class="habit-name">' + Security.esc(h.name) + '</div>'
+      + '<div class="habit-streak">' + streakLabel + '</div>'
+      + '</div></div>';
   }).join('');
 }
 
@@ -1443,36 +1447,32 @@ async function renderSharedGoals() {
     const totalSteps = goal.total_steps || 10;
     const combinedPct = Math.round(((mySteps + partnerSteps) / (totalSteps * 2)) * 100);
     
-    html += `
-      <div class="shared-goal-card">
-        <div class="shared-goal-header">
-          <div class="shared-goal-icon">🎯</div>
-          <div class="shared-goal-title">${Security.esc(goal.title)}</div>
-          <button class="btn btn-sm" style="color:var(--danger)" onclick="App.deleteGoal('${goal.id}')">🗑</button>
-        </div>
-        ${goal.description ? `<div style="font-size:.8rem;color:var(--text-m);margin-bottom:12px">${Security.esc(goal.description)}</div>` : ''}
-        <div class="shared-goal-progress">
-          <div class="shared-goal-bar"><div class="shared-goal-bar-fill" style="width:${combinedPct}%"></div></div>
-          <div class="shared-goal-stats">
-            <span>Combined Progress</span>
-            <span>${combinedPct}%</span>
-          </div>
-        </div>
-        <div class="shared-goal-people">
-          <div class="shared-goal-person">
-            <div class="shared-goal-person-emoji">${S.profile.emoji}</div>
-            <div class="shared-goal-person-name">${S.profile.name}</div>
-            <div class="shared-goal-person-progress">${mySteps} / ${totalSteps}</div>
-            <button class="btn btn-sm btn-secondary shared-goal-person-btn" onclick="App.updateGoalProgress('${goal.id}', ${mySteps})">Update</button>
-          </div>
-          <div class="shared-goal-person">
-            <div class="shared-goal-person-emoji">${S.partnerProfile ? S.partnerProfile.emoji : '👤'}</div>
-            <div class="shared-goal-person-name">${S.partnerProfile ? S.partnerProfile.name : 'Partner'}</div>
-            <div class="shared-goal-person-progress">${partnerSteps} / ${totalSteps}</div>
-          </div>
-        </div>
-      </div>
-    `;
+    var descHtml = goal.description ? '<div style="font-size:.8rem;color:var(--text-m);margin-bottom:12px">' + Security.esc(goal.description) + '</div>' : '';
+    var partnerEmoji = S.partnerProfile ? S.partnerProfile.emoji : '👤';
+    var partnerName = S.partnerProfile ? S.partnerProfile.name : 'Partner';
+    html += '<div class="shared-goal-card">'
+      + '<div class="shared-goal-header">'
+      + '<div class="shared-goal-icon">🎯</div>'
+      + '<div class="shared-goal-title">' + Security.esc(goal.title) + '</div>'
+      + '<button class="btn btn-sm" style="color:var(--danger)" onclick="App.deleteGoal(\'' + goal.id + '\')">🗑</button>'
+      + '</div>'
+      + descHtml
+      + '<div class="shared-goal-progress">'
+      + '<div class="shared-goal-bar"><div class="shared-goal-bar-fill" style="width:' + combinedPct + '%"></div></div>'
+      + '<div class="shared-goal-stats"><span>Combined Progress</span><span>' + combinedPct + '%</span></div>'
+      + '</div>'
+      + '<div class="shared-goal-people">'
+      + '<div class="shared-goal-person">'
+      + '<div class="shared-goal-person-emoji">' + Security.esc(S.profile.emoji) + '</div>'
+      + '<div class="shared-goal-person-name">' + Security.esc(S.profile.name) + '</div>'
+      + '<div class="shared-goal-person-progress">' + mySteps + ' / ' + totalSteps + '</div>'
+      + '<button class="btn btn-sm btn-secondary shared-goal-person-btn" onclick="App.updateGoalProgress(\'' + goal.id + '\', ' + mySteps + ')">Update</button>'
+      + '</div>'
+      + '<div class="shared-goal-person">'
+      + '<div class="shared-goal-person-emoji">' + partnerEmoji + '</div>'
+      + '<div class="shared-goal-person-name">' + partnerName + '</div>'
+      + '<div class="shared-goal-person-progress">' + partnerSteps + ' / ' + totalSteps + '</div>'
+      + '</div></div></div>';
   }
   html += '<button class="btn btn-primary btn-full mt-8" onclick="App.addGoalModal()">+ Add Shared Goal</button></div>';
   el('tracker-goals').innerHTML = html;
@@ -1759,9 +1759,10 @@ async function loadPrayerTimes() {
     S.prayerTimings = timings;
     renderPrayerCard(timings);
     startPrayerCountdown(timings);
-    // Schedule prayer notifications now that timings are loaded
+    // Re-run full setup now that prayer timings are available
+    // setupNotifications() clears old timers first — no duplicates
     if (Notification.permission === 'granted') {
-      schedulePrayerNotifs(timings);
+      setupNotifications();
     }
   } catch (e) {
     const g = el('prayer-grid');
@@ -2202,7 +2203,7 @@ const App = {
       el('pin-screen').classList.add('hidden');
       el('app').classList.remove('hidden');
       await renderToday();
-      setupNotifications();
+      await setupNotifications();
     } else {
       PinSecurity.recordFailedAttempt(S.profileId);
       const remaining = PinSecurity.getAttemptsRemaining(S.profileId);
@@ -2704,6 +2705,25 @@ const App = {
   _confirmRes: null
 };
 
+// ─── VISIBILITY / FOREGROUND HANDLER ────────────────────────────
+// When user brings app back to foreground, refresh S.today and
+// reschedule notifications (timers are lost if phone restarted)
+document.addEventListener('visibilitychange', function() {
+  if (document.hidden) return;
+  // Refresh today's date
+  var freshDate = todayDubai();
+  if (freshDate !== S.today) {
+    // Day has changed — update state and re-render
+    S.today = freshDate;
+    S.viewDate = freshDate;
+    if (S.view === 'today') renderToday();
+  }
+  // Always re-run notifications on foreground to restore lost timers
+  if (Notification.permission === 'granted') {
+    setupNotifications();
+  }
+});
+
 // ─── JOURNAL AUTO-SAVE ────────────────────────────────────────
 const journalSave = debounce(async function(val) {
   if (S.viewDate && S.viewDate !== S.today) return;
@@ -2827,6 +2847,7 @@ async function setupNotifications() {
   if (Notification.permission !== 'granted') return;
   _clearNotifTimers();
   var name = (S.profile && S.profile.name) ? S.profile.name : 'there';
+  console.log('[Notifs] Setting up notifications for ' + name + '...');
   // ── 8:00 AM Dubai — morning reminder ──────────────────────────
   scheduleDailyNotif(8, 0,
     '🌅 Good morning, ' + name + '!',
@@ -2867,7 +2888,7 @@ async function setupNotifications() {
           el('pin-screen').classList.add('hidden');
           el('app').classList.remove('hidden');
           await renderToday();
-          setupNotifications();
+          await setupNotifications();
           return;
         }
       }
@@ -2888,7 +2909,6 @@ async function setupNotifications() {
 })();
 
 // ─── SERVICE WORKER REGISTRATION ──────────────────────────────
-var swRegistration = null;
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function() {
     navigator.serviceWorker.register('./sw.js')
