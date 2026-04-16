@@ -211,15 +211,24 @@ section.view.active{display:block}
   .nl-col{border-right:none;border-bottom:2px solid var(--border-l)}
   .nl-col:last-child{border-bottom:none}
 }
-.note-item{padding:14px 16px;border-bottom:1px solid var(--border-l);display:flex;gap:12px;align-items:flex-start}
+.note-item{padding:14px 16px;border-bottom:1px solid var(--border-l);display:flex;gap:12px;align-items:flex-start;transition:background .12s}
 .note-item:last-child{border-bottom:none}
-.note-check{width:22px;height:22px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
+.note-item.completed .note-title,.note-item.completed .note-content{text-decoration:line-through;opacity:.5}
+.note-check{width:22px;height:22px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;margin-top:2px;transition:all .15s}
 .note-check.done{background:var(--primary);border-color:var(--primary)}
 .note-check.done svg{stroke:#fff}
 .note-check svg{width:12px;height:12px;stroke:transparent}
-.note-content{flex:1;font-size:.88rem;line-height:1.4}
-.note-meta{font-size:.72rem;color:var(--text-l);margin-top:4px}
-.note-actions{display:flex;gap:4px}
+.note-body{flex:1;min-width:0}
+.note-title{font-size:.92rem;font-weight:600;color:var(--text);line-height:1.35;margin-bottom:4px;word-break:break-word}
+.note-content{font-size:.86rem;line-height:1.6;color:var(--text-m);white-space:pre-wrap;word-break:break-word;margin-bottom:4px}
+.note-meta{font-size:.7rem;color:var(--text-l);margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.note-actions{display:flex;gap:4px;flex-shrink:0;margin-top:1px}
+.note-title[dir=rtl],.note-content[dir=rtl]{font-family:'Geeza Pro','Traditional Arabic','Segoe UI',var(--font-body);line-height:1.9;text-align:right}
+.note-title[dir=rtl]{font-size:.95rem}
+.note-content[dir=rtl]{font-size:.9rem}
+.note-textarea{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:.9rem;line-height:1.7;resize:vertical;background:var(--bg);color:var(--text);min-height:120px;font-family:var(--font-body);transition:border-color .2s}
+.note-textarea:focus{border-color:var(--primary-m);outline:none}
+.note-textarea[dir=rtl]{font-family:'Geeza Pro','Traditional Arabic','Segoe UI',var(--font-body);font-size:.95rem;line-height:1.9;text-align:right}
 .idea-card{padding:14px 16px;border-bottom:1px solid var(--border-l)}
 .idea-cat{font-size:.68rem;font-weight:600;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
 .idea-text{font-size:.88rem;line-height:1.4}
@@ -903,6 +912,21 @@ function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTi
 function el(id) { return document.getElementById(id); }
 function svgCheck() { return `<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`; }
 
+// RTL detection — Arabic/Hebrew/Persian letters trigger right-to-left mode
+function detectDir(text) {
+  if (!text) return 'ltr';
+  var rtl = (text.match(/[؀-ۿݐ-ݿ֐-׿]/g) || []).length;
+  var lat = (text.match(/[a-zA-Z]/g) || []).length;
+  return (rtl + lat > 0 && rtl / (rtl + lat) > 0.3) ? 'rtl' : 'ltr';
+}
+
+// Auto-set dir + alignment on a text input/textarea as user types
+function autoDirInput(el_) {
+  var dir = detectDir(el_.value);
+  el_.setAttribute('dir', dir);
+  el_.style.textAlign = dir === 'rtl' ? 'right' : 'left';
+}
+
 // ─── DATA LAYER ───────────────────────────────────────────────
 const DB = {
   // Profiles
@@ -1555,19 +1579,38 @@ function noteItemHTML(n, showOwner) {
   if (showOwner === undefined) showOwner = false;
   var _p = S.profiles.find(function(p){ return p.id === n.profile_id; });
   var ownerEmoji = _p ? _p.emoji : '';
+  var completedCls = n.completed ? ' completed' : '';
   var checkCls = n.completed ? ' done' : '';
   var timePart = (n.is_reminder && n.reminder_date) ? ('⏰ ' + fmtTs(n.reminder_date)) : fmtTs(n.created_at);
-  var ownerPart = showOwner ? (ownerEmoji + ' · ') : '';
+  var ownerPart = showOwner ? ('<span>' + ownerEmoji + '</span>') : '';
   var sharedBadge = n.is_shared ? '<span class="shared-badge">Shared</span>' : '';
-  return '<div class="note-item">'
+  // Auto-detect RTL for title and content independently
+  var titleDir = detectDir(n.title || '');
+  var contentDir = detectDir(n.content || '');
+  // Title — only rendered if present
+  var titleHtml = n.title
+    ? '<div class="note-title" dir="' + titleDir + '">' + Security.esc(n.title) + '</div>'
+    : '';
+  // Content — white-space:pre-wrap (set in CSS) preserves every line break
+  var contentHtml = n.content
+    ? '<div class="note-content" dir="' + contentDir + '">' + Security.esc(n.content) + '</div>'
+    : '';
+  // Edit + delete only on own notes
+  var isOwn = n.profile_id === S.profileId;
+  var editBtn = isOwn
+    ? '<button class="btn btn-sm" style="color:var(--text-l)" onclick="App.editNoteModal(\'' + n.id + '\')" title="Edit">✏️</button>'
+    : '';
+  var delBtn = isOwn
+    ? '<button class="btn btn-sm" style="color:var(--danger)" onclick="App.deleteNote(\'' + n.id + '\')" title="Delete">🗑</button>'
+    : '';
+  return '<div class="note-item' + completedCls + '">'
     + '<div class="note-check' + checkCls + '" onclick="App.toggleNote(\'' + n.id + '\',' + n.completed + ')">' + svgCheck() + '</div>'
-    + '<div style="flex:1">'
-    + '<div class="note-content">' + Security.esc(n.content) + '</div>'
-    + '<div class="note-meta">' + ownerPart + timePart + ' ' + sharedBadge + '</div>'
+    + '<div class="note-body">'
+    + titleHtml + contentHtml
+    + '<div class="note-meta">' + ownerPart + '<span>' + timePart + '</span>' + sharedBadge + '</div>'
     + '</div>'
-    + '<div class="note-actions">'
-    + '<button class="btn btn-sm" style="color:var(--danger)" onclick="App.deleteNote(\'' + n.id + '\')">🗑</button>'
-    + '</div></div>';
+    + '<div class="note-actions">' + editBtn + delBtn + '</div>'
+    + '</div>';
 }
 
 async function renderIdeasList() {
@@ -1580,15 +1623,15 @@ async function renderIdeasList() {
     return;
   }
   
-  c.innerHTML = '<div class="habit-list" style="margin:12px 16px">' + ideas.map(i => `
-    <div class="idea-card">
-      <div class="idea-cat">${Security.esc(i.category || 'general')}</div>
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
-        <div class="idea-text">${Security.esc(i.content)}</div>
-        <button class="btn btn-sm" style="color:var(--danger);margin-left:8px" onclick="App.deleteIdea('${i.id}')">🗑</button>
-      </div>
-    </div>
-  `).join('') + '</div>';
+  var ideaRows = ideas.map(function(i) {
+    return '<div class="idea-card">'
+      + '<div class="idea-cat">' + Security.esc(i.category || 'general') + '</div>'
+      + '<div style="display:flex;justify-content:space-between;align-items:flex-start">'
+      + '<div class="idea-text">' + Security.esc(i.content) + '</div>'
+      + '<button class="btn btn-sm" style="color:var(--danger);margin-left:8px" onclick="App.deleteIdea(\'' + i.id + '\')">🗑</button>'
+      + '</div></div>';
+  }).join('');
+  c.innerHTML = '<div class="habit-list" style="margin:12px 16px">' + ideaRows + '</div>';
 }
 
 async function renderLinksList() {
@@ -2467,36 +2510,114 @@ const App = {
   
   // Notes
   addNoteModal() {
-    openModal('New Note', `
-      <div class="field"><label>Content</label><textarea id="m-nc" rows="4" placeholder="Write your note..."></textarea></div>
-      <div class="field"><label>Reminder Date (optional)</label><input type="datetime-local" id="m-rd"></div>
-      <div class="share-toggle">
-        <label>💕 Share with ${S.partnerProfile ? S.partnerProfile.name : 'partner'}</label>
-        <label class="toggle">
-          <input type="checkbox" id="m-share">
-          <span class="toggle-slider"></span>
-        </label>
-      </div>
-    `, [
-      { label: 'Cancel', cls: 'btn-secondary', fn: 'App.closeModal()' },
-      { label: 'Save Note', cls: 'btn-primary', fn: 'App.saveNote()' }
-    ]);
+    var pName = S.partnerProfile ? S.partnerProfile.name : 'partner';
+    openModal('New Note',
+        '<div class="field">'
+      + '<label>Title (optional)</label>'
+      + '<input type="text" id="m-nt" placeholder="Note title..." oninput="autoDirInput(this)"'
+      + ' style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:.9rem;background:var(--bg);color:var(--text)">'
+      + '</div>'
+      + '<div class="field">'
+      + '<label>Content</label>'
+      + '<textarea id="m-nc" class="note-textarea" placeholder="Write your note..." oninput="autoDirInput(this)"></textarea>'
+      + '</div>'
+      + '<div class="field">'
+      + '<label>Reminder (optional)</label>'
+      + '<input type="datetime-local" id="m-rd"'
+      + ' style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:.88rem;background:var(--bg)">'
+      + '</div>'
+      + '<div class="share-toggle">'
+      + '<label>💕 Share with ' + pName + '</label>'
+      + '<label class="toggle"><input type="checkbox" id="m-share"><span class="toggle-slider"></span></label>'
+      + '</div>',
+      [
+        { label: 'Cancel', cls: 'btn-secondary', fn: 'App.closeModal()' },
+        { label: 'Save Note', cls: 'btn-primary', fn: 'App.saveNote()' }
+      ]
+    );
   },
   
   async saveNote() {
-    const content = el('m-nc').value.trim();
+    var content = el('m-nc').value.trim();
     if (!content) { toast('Content required'); return; }
-    const rd = el('m-rd').value;
-    const isShared = el('m-share').checked;
-    await DB.addNote({ content, reminder_date: rd || null, is_reminder: !!rd, is_shared: isShared, completed: false });
-    closeModal({});
+    var title   = el('m-nt') ? el('m-nt').value.trim() : '';
+    var rd      = el('m-rd') ? el('m-rd').value : '';
+    var isShared = el('m-share') ? el('m-share').checked : false;
+    await DB.addNote({
+      title: title || null,
+      content: content,
+      reminder_date: rd || null,
+      is_reminder: !!rd,
+      is_shared: isShared,
+      completed: false
+    });
+    closeModal();
     await renderNotesList();
     toast('Note saved ✓');
   },
   
   async toggleNote(id, cur) {
+    var note = S.notes ? S.notes.find(function(n){ return n.id === id; }) : null;
+    if (note && note.profile_id !== S.profileId) { toast("Can't edit partner's notes"); return; }
     await DB.updateNote(id, { completed: !cur });
     await renderNotesList();
+  },
+
+  editNoteModal(id) {
+    var note = S.notes ? S.notes.find(function(n){ return n.id === id; }) : null;
+    if (!note) { toast('Note not found'); return; }
+    if (note.profile_id !== S.profileId) { toast("Can't edit partner's notes"); return; }
+    var pName = S.partnerProfile ? S.partnerProfile.name : 'partner';
+    var tv = note.title ? Security.escapeAttr(note.title) : '';
+    var rdv = note.reminder_date ? note.reminder_date.slice(0, 16) : '';
+    var sc = note.is_shared ? 'checked' : '';
+    openModal('Edit Note',
+        '<div class="field">'
+      + '<label>Title (optional)</label>'
+      + '<input type="text" id="m-nt" value="' + tv + '" placeholder="Note title..." oninput="autoDirInput(this)"'
+      + ' style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:.9rem;background:var(--bg);color:var(--text)">'
+      + '</div>'
+      + '<div class="field">'
+      + '<label>Content</label>'
+      + '<textarea id="m-nc" class="note-textarea" oninput="autoDirInput(this)">' + Security.esc(note.content) + '</textarea>'
+      + '</div>'
+      + '<div class="field">'
+      + '<label>Reminder (optional)</label>'
+      + '<input type="datetime-local" id="m-rd" value="' + rdv + '"'
+      + ' style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:.88rem;background:var(--bg)">'
+      + '</div>'
+      + '<div class="share-toggle">'
+      + '<label>💕 Share with ' + pName + '</label>'
+      + '<label class="toggle"><input type="checkbox" id="m-share" ' + sc + '><span class="toggle-slider"></span></label>'
+      + '</div>',
+      [
+        { label: 'Cancel', cls: 'btn-secondary', fn: 'App.closeModal()' },
+        { label: 'Save Changes', cls: 'btn-primary', fn: 'App.updateNote(\'' + id + '\')' }
+      ]
+    );
+    // Trigger dir detection after modal renders
+    setTimeout(function() {
+      var ta = el('m-nc'); if (ta) autoDirInput(ta);
+      var ti = el('m-nt'); if (ti) autoDirInput(ti);
+    }, 40);
+  },
+
+  async updateNote(id) {
+    var content = el('m-nc').value.trim();
+    if (!content) { toast('Content required'); return; }
+    var title    = el('m-nt') ? el('m-nt').value.trim() : '';
+    var rd       = el('m-rd') ? el('m-rd').value : '';
+    var isShared = el('m-share') ? el('m-share').checked : false;
+    await DB.updateNote(id, {
+      title: title || null,
+      content: content,
+      reminder_date: rd || null,
+      is_reminder: !!rd,
+      is_shared: isShared
+    });
+    closeModal();
+    await renderNotesList();
+    toast('Note updated ✓');
   },
   
   async deleteNote(id) {
