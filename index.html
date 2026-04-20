@@ -569,6 +569,7 @@ section.view.active{display:block}
             <span class="setting-value" id="notif-status">Checking...</span>
           </div>
           <button class="btn btn-secondary btn-sm btn-full mt-8" onclick="App.requestNotifications()">Enable Notifications</button>
+          <button class="btn btn-sm btn-full mt-8" style="background:var(--accent-l);color:var(--accent);font-weight:600" onclick="App.testNotification()">🔔 Send Test Notification (1 min)</button>
         </div>
       </div>
 
@@ -1802,6 +1803,8 @@ async function loadPrayerTimes() {
     S.prayerTimings = timings;
     renderPrayerCard(timings);
     startPrayerCountdown(timings);
+    // Re-run setup now that prayer timings are loaded — clears old timers first
+    if (Notification.permission === 'granted') setupNotifications();
     // Re-run full setup now that prayer timings are available
     // setupNotifications() clears old timers first — no duplicates
     if (Notification.permission === 'granted') {
@@ -2813,6 +2816,27 @@ const App = {
   },
   
   // Modal helpers
+  async testNotification() {
+    if (!('Notification' in window)) {
+      toast('Notifications not supported in this browser'); return;
+    }
+    if (!isPWAInstalled()) {
+      toast('Please open from Home Screen first, not Safari'); return;
+    }
+    if (Notification.permission !== 'granted') {
+      toast('Enable notifications first in Settings above'); return;
+    }
+    toast('✅ Test scheduled — notification fires in 1 minute', 4000);
+    console.log('[Test] Notification firing in 60s...');
+    setTimeout(async function() {
+      await showLocalNotif(
+        '🔔 Test — Notifications Working!',
+        'Your prayer times and daily reminders (8am & 10pm) are active.',
+        'test-notif-' + Date.now()
+      );
+    }, 60 * 1000);
+  },
+
   closeModal(e) { closeModal(e); },
   confirm(msg) {
     return new Promise(res => {
@@ -2868,20 +2892,23 @@ function _clearNotifTimers() {
 // Show a notification via the Service Worker (required for iOS PWA)
 async function showLocalNotif(title, body, tag) {
   if (Notification.permission !== 'granted') return;
-  // Wait for SW to be ready
-  var reg = swRegistration;
-  if (!reg) {
-    try { reg = await navigator.serviceWorker.ready; } catch(e) { return; }
-  }
   try {
+    // Always use serviceWorker.ready — guaranteed to resolve
+    // even if swRegistration hasn't been assigned yet
+    var reg = await navigator.serviceWorker.ready;
     await reg.showNotification(title, {
       body: body,
-      icon: '/web-app-manifest-192x192.png',
-      badge: '/favicon-96x96.png',
-      tag: tag || 'life-assistant',
-      renotify: true
+      icon: './web-app-manifest-192x192.png',
+      tag: tag || 'life-notif-' + Date.now(),
+      renotify: true,
+      requireInteraction: false
     });
-  } catch(e) { console.warn('Notification failed:', e); }
+    console.log('[Notif] Sent: ' + title);
+  } catch(e) {
+    console.error('[Notif] Failed:', e.name, e.message);
+    // Last resort — try basic Notification API (works on desktop/Android)
+    try { new Notification(title, { body: body }); } catch(e2) {}
+  }
 }
 
 // Returns ms until next occurrence of dubaiHour:dubaiMinute in Dubai timezone
@@ -3030,23 +3057,23 @@ async function setupNotifications() {
 })();
 
 // ─── SERVICE WORKER REGISTRATION ──────────────────────────────
+// Register immediately (not on 'load') so it's ready before init() needs it
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function() {
-    navigator.serviceWorker.register('./sw.js')
-      .then(function(reg) {
-        swRegistration = reg;
-        console.log('SW registered:', reg.scope);
-        reg.addEventListener('updatefound', function() {
-          var newWorker = reg.installing;
-          newWorker.addEventListener('statechange', function() {
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              toast('Update available! Refresh to update.', 4000);
-            }
-          });
+  navigator.serviceWorker.register('./sw.js')
+    .then(function(reg) {
+      swRegistration = reg;
+      console.log('[SW] Registered:', reg.scope);
+      // Check for updates
+      reg.addEventListener('updatefound', function() {
+        var newWorker = reg.installing;
+        newWorker.addEventListener('statechange', function() {
+          if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+            toast('Update available! Refresh to update.', 4000);
+          }
         });
-      })
-      .catch(function(err) { console.error('SW registration failed:', err); });
-  });
+      });
+    })
+    .catch(function(err) { console.error('[SW] Registration failed:', err); });
 }
 </script>
 </body>
