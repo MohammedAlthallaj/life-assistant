@@ -564,12 +564,28 @@ section.view.active{display:block}
       <div class="section-label">🔔 Notifications</div>
       <div class="settings-section">
         <div class="card" style="margin:0">
-          <div class="setting-row">
-            <span class="setting-label">Status</span>
-            <span class="setting-value" id="notif-status">Checking...</span>
+          <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-l);margin-bottom:10px">Status</div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+            <div style="display:flex;justify-content:space-between">
+              <span style="font-size:.82rem;color:var(--text-m)">PWA (Home Screen)</span>
+              <span id="diag-pwa" style="font-size:.8rem">—</span>
+            </div>
+            <div style="display:flex;justify-content:space-between">
+              <span style="font-size:.82rem;color:var(--text-m)">Permission</span>
+              <span id="diag-perm" style="font-size:.8rem">—</span>
+            </div>
+            <div style="display:flex;justify-content:space-between">
+              <span style="font-size:.82rem;color:var(--text-m)">Push Subscription</span>
+              <span id="diag-push" style="font-size:.8rem">—</span>
+            </div>
+            <div style="display:flex;justify-content:space-between">
+              <span style="font-size:.82rem;color:var(--text-m)">Overall</span>
+              <span id="notif-status" style="font-size:.8rem">—</span>
+            </div>
           </div>
-          <button class="btn btn-secondary btn-sm btn-full mt-8" onclick="App.requestNotifications()">Enable Notifications</button>
-          <button class="btn btn-sm btn-full mt-8" style="background:var(--accent-l);color:var(--accent);font-weight:600" onclick="App.testNotification()">🔔 Send Test Notification (1 min)</button>
+          <button class="btn btn-primary btn-sm btn-full" onclick="App.requestNotifications()">Enable Notifications</button>
+          <button class="btn btn-sm btn-full" style="background:var(--accent-l);color:var(--accent);font-weight:600;margin-top:8px" onclick="App.testNotification()">🔔 Test (fires in 5 sec)</button>
+          <div id="notif-test-log" style="font-size:.76rem;color:var(--text-m);margin-top:8px;line-height:1.7;min-height:16px"></div>
         </div>
       </div>
 
@@ -680,6 +696,10 @@ section.view.active{display:block}
 
 // Declared at top so it's available when setupNotifications() runs inside init()
 var swRegistration = null;
+
+// ─── VAPID PUBLIC KEY ─────────────────────────────────────────────
+// PASTE YOUR PUBLIC KEY FROM vapid-generator.html HERE ↓
+var VAPID_PUBLIC_KEY = 'BKNAlM4TBEYUVCgovKIS9tM5tNidsJzFNk9S8JP9RnxRSi3-dWxd30UF7ur6oAe1xws5IW8Ag71xQcpkhldueXE';
 
 // ─── SECURITY: XSS SANITIZATION ───────────────────────────────────────────
 const Security = {
@@ -1178,6 +1198,22 @@ const DB = {
       ideas: ideas.data || [],
       links: links.data || []
     };
+  },
+
+  // Push subscriptions
+  async savePushSubscription(subscription) {
+    var sub = subscription.toJSON();
+    return sb.from('push_subscriptions').upsert({
+      profile_id: S.profileId,
+      endpoint: sub.endpoint,
+      p256dh: sub.keys.p256dh,
+      auth: sub.keys.auth,
+      profile_name: S.profile ? S.profile.name : '',
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'profile_id' });
+  },
+  async deletePushSubscription() {
+    return sb.from('push_subscriptions').delete().eq('profile_id', S.profileId);
   }
 };
 
@@ -2775,9 +2811,46 @@ const App = {
     renderNotifStatus();
     if (permission === 'granted') {
       await setupNotifications();
-      toast('Notifications enabled ✓ Prayer times and daily reminders active');
+      // Subscribe to Web Push so server can notify when app is closed
+      await App.subscribeToPush();
+      toast('Notifications enabled ✓');
     } else {
       toast('Permission not granted');
+    }
+  },
+
+  async subscribeToPush() {
+    // Skip if VAPID key not configured yet
+    if (!VAPID_PUBLIC_KEY || VAPID_PUBLIC_KEY === 'PASTE_YOUR_PUBLIC_KEY_HERE') {
+      console.warn('[Push] VAPID_PUBLIC_KEY not set — server push disabled');
+      return;
+    }
+    if (!('PushManager' in window)) {
+      console.warn('[Push] PushManager not supported');
+      return;
+    }
+    try {
+      var reg = await navigator.serviceWorker.ready;
+      // Convert base64url VAPID key to Uint8Array
+      var key = VAPID_PUBLIC_KEY.replace(/-/g, '+').replace(/_/g, '/');
+      var pad = key.length % 4;
+      if (pad) key += '===='.slice(0, 4 - pad);
+      var raw = atob(key);
+      var appServerKey = new Uint8Array(raw.length);
+      for (var i = 0; i < raw.length; i++) appServerKey[i] = raw.charCodeAt(i);
+
+      var sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: appServerKey
+      });
+      await DB.savePushSubscription(sub);
+      var dp = el('diag-push');
+      if (dp) dp.innerHTML = '<span style="color:var(--success)">✅ Subscribed</span>';
+      console.log('[Push] Subscribed and saved to Supabase ✓');
+    } catch(e) {
+      console.error('[Push] Subscribe failed:', e);
+      var dp = el('diag-push');
+      if (dp) dp.innerHTML = '<span style="color:var(--danger)">❌ ' + e.message + '</span>';
     }
   },
   
@@ -2817,24 +2890,43 @@ const App = {
   
   // Modal helpers
   async testNotification() {
-    if (!('Notification' in window)) {
-      toast('Notifications not supported in this browser'); return;
-    }
-    if (!isPWAInstalled()) {
-      toast('Please open from Home Screen first, not Safari'); return;
-    }
-    if (Notification.permission !== 'granted') {
-      toast('Enable notifications first in Settings above'); return;
-    }
-    toast('✅ Test scheduled — notification fires in 1 minute', 4000);
-    console.log('[Test] Notification firing in 60s...');
+    var log = el('notif-test-log');
+    var L = function(msg) { if (log) log.innerHTML += msg + '<br>'; console.log('[Test]', msg); };
+    if (log) log.innerHTML = '';
+
+    if (!('Notification' in window)) { L('❌ Notification API not supported'); return; }
+    L('✓ Notification API available');
+
+    if (Notification.permission !== 'granted') { L('❌ Permission not granted — tap Enable first'); return; }
+    L('✓ Permission granted');
+
+    if (!('serviceWorker' in navigator)) { L('❌ Service Worker not supported'); return; }
+
+    var reg;
+    try {
+      reg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise(function(_, rej) { setTimeout(function(){ rej(new Error('SW timeout')); }, 5000); })
+      ]);
+      L('✓ Service worker ready');
+    } catch(e) { L('❌ SW error: ' + e.message); return; }
+
+    L('⏱ Firing in 5 seconds — press Home button now!');
+    toast('🔔 Notification in 5 seconds — press Home!', 5500);
+
     setTimeout(async function() {
-      await showLocalNotif(
-        '🔔 Test — Notifications Working!',
-        'Your prayer times and daily reminders (8am & 10pm) are active.',
-        'test-notif-' + Date.now()
-      );
-    }, 60 * 1000);
+      try {
+        await reg.showNotification('🔔 Test — It Works!', {
+          body: 'Notifications are working. Prayer times + 8am/10pm reminders active.',
+          icon: './web-app-manifest-192x192.png',
+          tag: 'test-' + Date.now(),
+          renotify: true
+        });
+        L('✅ Sent! Did you see it?');
+      } catch(e) {
+        L('❌ showNotification failed: ' + e.name + ' — ' + e.message);
+      }
+    }, 5000);
   },
 
   closeModal(e) { closeModal(e); },
@@ -2975,20 +3067,50 @@ function isPWAInstalled() {
 }
 
 function renderNotifStatus() {
+  var ok = function(t){ return '<span style="color:var(--success)">✅ ' + t + '</span>'; };
+  var bad = function(t){ return '<span style="color:var(--danger)">❌ ' + t + '</span>'; };
+  var warn = function(t){ return '<span style="color:var(--accent)">⚠️ ' + t + '</span>'; };
+
+  // PWA
+  var dp = el('diag-pwa');
+  var pwaOk = isPWAInstalled();
+  if (dp) dp.innerHTML = pwaOk ? ok('Yes') : bad('Open from Home Screen');
+
+  // Permission
+  var dpm = el('diag-perm');
+  if (dpm) {
+    if (!('Notification' in window)) { dpm.innerHTML = bad('Not supported'); }
+    else {
+      var p = Notification.permission;
+      dpm.innerHTML = p === 'granted' ? ok('Granted')
+        : p === 'denied' ? bad('Blocked — fix in iPhone Settings')
+        : warn('Not asked yet');
+    }
+  }
+
+  // Push subscription check
+  var dpush = el('diag-push');
+  if (dpush && S.profileId && sb) {
+    sb.from('push_subscriptions').select('endpoint').eq('profile_id', S.profileId).maybeSingle()
+      .then(function(r) {
+        if (!dpush) return;
+        dpush.innerHTML = (r.data && r.data.endpoint)
+          ? ok('Active')
+          : warn('Not subscribed — tap Enable');
+      }).catch(function() {
+        if (dpush) dpush.innerHTML = warn('Unknown');
+      });
+  }
+
+  // Overall
   var s = el('notif-status');
   if (!s) return;
-  if (!('Notification' in window)) {
-    s.innerHTML = '<span style="color:var(--text-l)">Not supported in this browser</span>';
-    return;
-  }
-  if (!isPWAInstalled()) {
-    s.innerHTML = '<span style="color:var(--accent)">⚠️ Add app to Home Screen first</span>';
-    return;
-  }
-  var p = Notification.permission;
-  if (p === 'granted') s.innerHTML = '<span style="color:var(--success)">✅ Enabled</span>';
-  else if (p === 'denied') s.innerHTML = '<span style="color:var(--danger)">❌ Blocked — enable in iPhone Settings</span>';
-  else s.innerHTML = '<span style="color:var(--accent)">⚠️ Not enabled yet</span>';
+  if (!('Notification' in window)) { s.innerHTML = bad('Not supported'); return; }
+  if (!pwaOk) { s.innerHTML = warn('Install to Home Screen first'); return; }
+  var perm = Notification.permission;
+  s.innerHTML = perm === 'granted' ? ok('All systems go')
+    : perm === 'denied' ? bad('Blocked in iPhone Settings')
+    : warn('Tap Enable below');
 }
 
 async function setupNotifications() {
@@ -2996,6 +3118,8 @@ async function setupNotifications() {
   _clearNotifTimers();
   var name = (S.profile && S.profile.name) ? S.profile.name : 'there';
   console.log('[Notifs] Setting up notifications for ' + name + '...');
+  // Ensure push subscription is active (re-subscribe if lost)
+  if (App.subscribeToPush) App.subscribeToPush().catch(function(){});
   // ── 8:00 AM Dubai — morning reminder ──────────────────────────
   scheduleDailyNotif(8, 0,
     '🌅 Good morning, ' + name + '!',
