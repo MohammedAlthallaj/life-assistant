@@ -1,5 +1,5 @@
 // Life Assistant v2.0 - Couples Edition Service Worker
-const CACHE_NAME = 'life-assistant-v5';
+const CACHE_NAME = 'life-assistant-v6';
 const ASSETS = [
   './',
   './index.html',
