@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Life Assistant</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1B4332">
@@ -27,10 +27,12 @@
   --danger:#C0392B;--danger-l:#FADBD8;
   --success:#1B4332;--success-l:#D8F3DC;
   --mood1:#E57373;--mood2:#FFB74D;--mood3:#FFD54F;--mood4:#81C784;--mood5:#43A047;
-  --r:14px;--r-sm:8px;--shadow:0 2px 12px rgba(0,0,0,.07);--shadow-lg:0 8px 32px rgba(0,0,0,.13);
+  --r:16px;--r-sm:10px;--r-lg:20px;--shadow:0 1px 3px rgba(0,0,0,.04);--shadow-lg:0 8px 32px rgba(0,0,0,.13);
   --font-body:'Sora',sans-serif;--font-head:'Lora',serif;
-  --nav-h:68px;--header-h:60px;
-  --partner-color:#BE185D;
+  --nav-h:64px;--header-h:60px;
+  --partner-color:#BE185D;--partner-bg:#FDF2F8;--partner-border:#FBCFE8;
+  --hot:#52B788;--quote-bg:#EDE9FE;--quote-c:#534AB7;
+  --sab:env(safe-area-inset-bottom);--sat:env(safe-area-inset-top);
 }
 html{font-size:16px;-webkit-text-size-adjust:100%}
 body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
@@ -39,105 +41,147 @@ input,textarea,select{font-family:inherit;outline:none}
 a{color:var(--primary-m);text-decoration:none}
 
 /* ─── PROFILE SELECT SCREEN ─────────────────────────────── */
-.splash-screen{position:fixed;inset:0;background:var(--primary);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;padding:32px}
+.splash-screen{position:fixed;inset:0;background:var(--primary);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:1000;padding:32px calc(24px + env(safe-area-inset-right)) calc(32px + var(--sab)) calc(24px + env(safe-area-inset-left))}
 .splash-screen.hidden{display:none}
-.splash-logo{font-family:var(--font-head);font-size:2.2rem;color:#fff;margin-bottom:8px;font-style:italic}
-.splash-sub{color:rgba(255,255,255,.6);font-size:.85rem;margin-bottom:48px}
-.splash-card{background:#fff;border-radius:20px;padding:28px 24px;width:100%;max-width:400px;box-shadow:var(--shadow-lg)}
-.splash-card h2{font-family:var(--font-head);font-size:1.25rem;color:var(--text);margin-bottom:6px;text-align:center}
-.splash-card p{font-size:.8rem;color:var(--text-m);margin-bottom:20px;line-height:1.5;text-align:center}
+.splash-logo{font-family:var(--font-head);font-size:2rem;color:#fff;margin-bottom:4px;font-style:italic;letter-spacing:-.5px}
+.splash-sub{color:rgba(255,255,255,.55);font-size:1rem;margin-bottom:36px;font-family:var(--font-head)}
+.splash-card{width:100%;max-width:400px}
+.splash-card h2{font-size:1rem;color:rgba(255,255,255,.7);margin-bottom:24px;text-align:center;font-weight:400}
 
-.profile-select{display:flex;gap:16px;justify-content:center;margin-top:24px}
-.profile-card{display:flex;flex-direction:column;align-items:center;padding:24px 32px;border-radius:16px;cursor:pointer;transition:all .2s;border:2px solid var(--border);background:var(--surface)}
-.profile-card:hover{border-color:var(--primary-m);transform:translateY(-2px);box-shadow:var(--shadow)}
-.profile-card:active{transform:scale(.98)}
-.profile-emoji{font-size:3rem;margin-bottom:12px}
-.profile-name{font-weight:600;font-size:1rem;color:var(--text)}
-.profile-card.mohammad:hover{border-color:#1B4332}
-.profile-card.zahraa:hover{border-color:#BE185D}
+.profile-select{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:8px}
+.profile-card{display:flex;flex-direction:column;align-items:center;padding:28px 16px;border-radius:18px;cursor:pointer;transition:all .2s;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.1);min-height:120px;justify-content:center}
+.profile-card:active{transform:scale(.97);background:rgba(255,255,255,.2)}
+.profile-emoji{font-size:2.6rem;margin-bottom:10px}
+.profile-name{font-weight:500;font-size:.95rem;color:#fff}
+.profile-card.zahraa{border-color:rgba(190,24,93,.35);background:rgba(190,24,93,.14)}
+.profile-card.zahraa:active{background:rgba(190,24,93,.26)}
 
 /* ─── PIN SCREEN ─────────────────────────────── */
 .field{margin-bottom:14px}
 .field label{display:block;font-size:.75rem;font-weight:600;color:var(--text-m);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
-.field input,.field textarea,.field select{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:.9rem;color:var(--text);background:var(--bg);transition:border-color .2s}
+.field input,.field textarea,.field select{width:100%;padding:13px 14px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:.95rem;color:var(--text);background:var(--bg);transition:border-color .2s;min-height:46px}
 .field input:focus,.field textarea:focus{border-color:var(--primary-m)}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:12px 20px;border-radius:var(--r-sm);font-size:.9rem;font-weight:600;transition:all .18s;cursor:pointer}
-.btn-primary{background:var(--primary);color:#fff}.btn-primary:hover{background:var(--primary-m)}
-.btn-secondary{background:var(--surface2);color:var(--text)}.btn-secondary:hover{background:var(--border)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:13px 20px;border-radius:var(--r-sm);font-size:.9rem;font-weight:600;transition:all .18s;cursor:pointer;min-height:46px}
+.btn-primary{background:var(--primary);color:#fff}.btn-primary:active{background:var(--primary-m)}
+.btn-secondary{background:var(--surface2);color:var(--text)}.btn-secondary:active{background:var(--border)}
 .btn-danger{background:var(--danger);color:#fff}
 .btn-accent{background:var(--accent);color:#fff}
-.btn-sm{padding:8px 14px;font-size:.8rem}
+.btn-sm{padding:10px 14px;font-size:.82rem;min-height:44px}
 .btn-full{width:100%}
 .btn-icon{padding:9px;border-radius:var(--r-sm)}
 
-.pin-dots{display:flex;gap:14px;justify-content:center;margin:20px 0}
-.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--primary-m);transition:background .15s}
-.pin-dot.filled{background:var(--primary-m)}
-.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:4px}
-.pin-key{padding:16px;font-size:1.3rem;font-weight:500;border-radius:12px;background:var(--surface2);color:var(--text);text-align:center;transition:all .12s;-webkit-tap-highlight-color:transparent}
-.pin-key:active{background:var(--primary);color:#fff;transform:scale(.95)}
-.pin-key:disabled{opacity:0.4;cursor:not-allowed}
-.pin-key:disabled:active{background:var(--surface2);color:var(--text);transform:none}
-.pin-error{color:var(--danger);font-size:.82rem;text-align:center;min-height:20px;margin-top:4px}
-.pin-lockout{color:var(--danger);font-size:.85rem;text-align:center;padding:12px;background:var(--danger-l);border-radius:8px;margin-top:12px}
-.pin-profile-indicator{text-align:center;margin-bottom:16px;font-size:.85rem;color:var(--text-m)}
+.pin-dots{display:flex;gap:16px;justify-content:center;margin:24px 0 28px}
+.pin-dot{width:13px;height:13px;border-radius:50%;border:2px solid rgba(255,255,255,.4);transition:background .15s}
+.pin-dot.filled{background:#fff;border-color:#fff}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:4px;width:100%;max-width:300px}
+.pin-key{padding:0;height:56px;font-size:1.4rem;font-weight:400;border-radius:14px;background:rgba(255,255,255,.12);color:#fff;text-align:center;transition:all .1s;-webkit-tap-highlight-color:transparent;display:flex;align-items:center;justify-content:center}
+.pin-key:active{background:rgba(255,255,255,.3);transform:scale(.95)}
+.pin-key:disabled{opacity:0.35;cursor:not-allowed}
+.pin-key:disabled:active{background:rgba(255,255,255,.12);transform:none}
+.pin-error{color:#FECACA;font-size:.82rem;text-align:center;min-height:20px;margin-top:8px}
+.pin-lockout{color:#FECACA;font-size:.85rem;text-align:center;padding:12px;background:rgba(192,57,43,.25);border-radius:10px;margin-top:12px}
+.pin-profile-indicator{text-align:center;margin-bottom:16px;font-size:.85rem;color:rgba(255,255,255,.7)}
 .pin-profile-indicator span{font-size:1.5rem;display:block;margin-bottom:4px}
 
 /* ─── APP SHELL ───────────────────────────────────────── */
 #app{display:flex;flex-direction:column;min-height:100vh}
-.app-header{position:sticky;top:0;z-index:100;height:var(--header-h);background:var(--surface);border-bottom:1px solid var(--border-l);display:flex;align-items:center;padding:0 16px;gap:12px}
-.app-header h1{font-family:var(--font-head);font-size:1.15rem;font-weight:600;flex:1}
+.app-header{position:sticky;top:0;z-index:100;min-height:var(--header-h);background:var(--surface);border-bottom:1px solid var(--border-l);display:flex;align-items:center;padding:calc(8px + var(--sat)) 16px 8px;gap:12px}
+.app-header h1{font-family:var(--font-head);font-size:1.25rem;font-weight:600;flex:1}
 .app-header .hdr-sub{font-size:.75rem;color:var(--text-l);font-family:var(--font-body);font-weight:400}
-.header-actions{display:flex;gap:6px}
-#main-content{flex:1;overflow-y:auto;padding-bottom:calc(var(--nav-h) + 16px);scroll-behavior:smooth}
-section.view{display:none;animation:fadeIn .2s ease}
+.header-actions{display:flex;gap:6px;align-items:center}
+#main-content{flex:1;overflow-y:auto;padding-bottom:calc(var(--nav-h) + var(--sab) + 16px);scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
+section.view{display:none;animation:fadeIn .22s ease}
 section.view.active{display:block}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 
+/* ─── HERO HEADER (Today) ─────────────────────────────── */
+.hero{background:var(--primary);padding:calc(14px + var(--sat)) 16px 0;color:#fff}
+.hero-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.hero-greeting{font-size:.72rem;color:rgba(255,255,255,.6);margin-bottom:1px}
+.hero-name{font-size:1.15rem;color:#fff;font-weight:500;font-family:var(--font-head)}
+.hero-right{display:flex;align-items:center;gap:10px}
+.hero-partner{display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.12);border-radius:20px;padding:5px 11px 5px 7px;cursor:pointer}
+.hero-partner .hp-emoji{font-size:1rem}
+.hero-partner .hp-mood{font-size:.85rem}
+.hero-ring{position:relative;width:42px;height:42px;flex-shrink:0}
+.hero-ring svg{transform:rotate(-90deg)}
+.hero-ring .hr-bg{fill:none;stroke:rgba(255,255,255,.2);stroke-width:5}
+.hero-ring .hr-prog{fill:none;stroke:#fff;stroke-width:5;stroke-linecap:round;stroke-dasharray:100.5;stroke-dashoffset:100.5;transition:stroke-dashoffset .6s ease}
+.hero-ring .hr-pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:600;color:#fff}
+
+/* ─── DATE STRIP ──────────────────────────────────────── */
+.date-strip{display:flex;padding:0 4px 14px}
+.ds-day{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.ds-label{font-size:.62rem;color:rgba(255,255,255,.45);font-weight:500}
+.ds-circle{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:500;color:rgba(255,255,255,.6);transition:all .15s}
+.ds-circle.is-today{background:rgba(255,255,255,.2);color:#fff}
+.ds-circle.is-sel{background:#fff;color:var(--primary)}
+.ds-dot{width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,.25)}
+.ds-dot.done{background:var(--primary-l)}
+
+/* ─── PAST-DAY BANNER ─────────────────────────────────── */
+.past-banner{background:var(--accent-l);color:#7a5a10;font-size:.78rem;text-align:center;padding:7px 16px;display:flex;align-items:center;justify-content:center;gap:8px}
+.past-banner button{background:rgba(0,0,0,.08);border-radius:14px;padding:3px 12px;font-size:.72rem;font-weight:600;color:#7a5a10}
+
 /* ─── BOTTOM NAV ──────────────────────────────────────── */
-#bottom-nav{position:fixed;bottom:0;left:0;right:0;height:var(--nav-h);background:var(--surface);border-top:1px solid var(--border-l);display:flex;align-items:stretch;z-index:100;padding-bottom:env(safe-area-inset-bottom)}
-.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;-webkit-tap-highlight-color:transparent;color:var(--text-l);transition:color .15s;font-size:.65rem;font-weight:500;letter-spacing:.02em}
-.nav-item svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.nav-item.active{color:var(--primary-m)}
-.nav-item.active svg{stroke:var(--primary-m)}
+#bottom-nav{position:fixed;bottom:0;left:0;right:0;height:calc(var(--nav-h) + var(--sab));background:var(--surface);border-top:1px solid var(--border-l);display:flex;align-items:flex-start;z-index:100;padding:6px 0 var(--sab)}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:3px;cursor:pointer;-webkit-tap-highlight-color:transparent;color:var(--text-l);transition:color .15s;font-size:.62rem;font-weight:500;letter-spacing:.01em;padding-top:4px}
+.nav-item svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.nav-item.active{color:var(--primary)}
+.nav-item.active svg{stroke:var(--primary)}
+.nav-dot{width:4px;height:4px;border-radius:50%;background:var(--primary);margin-top:1px;opacity:0;transition:opacity .15s}
+.nav-item.active .nav-dot{opacity:1}
 
 /* ─── CARDS / COMMON ─────────────────────────────────── */
-.card{background:var(--surface);border-radius:var(--r);padding:18px;margin:12px 16px 0;box-shadow:var(--shadow)}
+.card{background:var(--surface);border-radius:var(--r);padding:16px;margin:10px 14px 0;border:.5px solid var(--border-l)}
 .card-title{font-family:var(--font-head);font-size:1rem;font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px}
 .card-title .badge{font-family:var(--font-body);font-size:.7rem;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--success-l);color:var(--success)}
-.section-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-l);padding:18px 16px 8px}
+.section-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-l);padding:16px 14px 8px}
 .divider{height:1px;background:var(--border-l);margin:12px 0}
 .empty-state{text-align:center;padding:32px 16px;color:var(--text-l)}
 .empty-state svg{width:44px;height:44px;stroke:var(--border);margin-bottom:10px}
 .empty-state p{font-size:.85rem}
 
-/* ─── PARTNER MOOD CARD ─────────────────────────────────── */
-.partner-mood-card{background:linear-gradient(135deg, #FDF2F8 0%, #FCE7F3 100%);border:1px solid #FBCFE8;margin:12px 16px 0;border-radius:var(--r);padding:14px 18px;display:flex;align-items:center;gap:14px}
-.partner-mood-card.no-mood{background:var(--surface2);border-color:var(--border)}
-.partner-mood-emoji{font-size:2rem}
-.partner-mood-text{flex:1}
-.partner-mood-name{font-weight:600;font-size:.9rem;color:#9D174D}
-.partner-mood-status{font-size:.8rem;color:#BE185D;margin-top:2px}
-.partner-mood-card.no-mood .partner-mood-name{color:var(--text-m)}
-.partner-mood-card.no-mood .partner-mood-status{color:var(--text-l)}
+/* ─── SKELETON LOADERS ────────────────────────────────── */
+.skel{background:var(--border-l);border-radius:8px;animation:skelPulse 1.4s ease infinite}
+@keyframes skelPulse{0%,100%{opacity:1}50%{opacity:.45}}
+
+/* ─── PARTNER MOOD (compact inline) ───────────────────── */
+.partner-mood-card{display:none}
 
 /* ─── TODAY VIEW ─────────────────────────────────────── */
-.date-header{padding:16px 16px 0;display:flex;flex-direction:column;gap:4px}
-.date-day{font-family:var(--font-head);font-size:1.8rem;font-weight:600;line-height:1;text-align:center}
-.date-full{font-size:.8rem;color:var(--text-m);text-align:center}
-.greeting{font-size:.85rem;color:var(--text-m);text-align:center;margin-top:4px}
-.date-nav{display:flex;justify-content:center;align-items:center;gap:16px;margin-top:8px}
-.date-nav button{padding:6px 14px;border-radius:8px;font-size:.8rem;background:var(--surface2);color:var(--text-m)}
-.mood-selector{display:flex;justify-content:space-around;margin:8px 0 12px}
-.mood-btn{width:48px;height:48px;border-radius:50%;font-size:1.6rem;background:var(--surface2);border:2px solid transparent;display:flex;align-items:center;justify-content:center;transition:all .15s}
-.mood-btn.selected{border-color:var(--primary);background:var(--success-l);transform:scale(1.1)}
-.journal-area{width:100%;min-height:80px;padding:12px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:.88rem;resize:none;background:var(--bg);line-height:1.5}
-.journal-area:focus{border-color:var(--primary-m)}
-.habit-list{background:var(--surface);border-radius:var(--r);overflow:hidden;margin:0 16px}
-.habit-row{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--border-l);gap:12px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .1s}
+.today-body{padding:10px 0 0}
+.mood-row{background:var(--surface);border-radius:var(--r);padding:14px;margin:10px 14px 0;border:.5px solid var(--border-l)}
+.mood-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.mood-label{font-size:.82rem;font-weight:600;color:var(--text-m)}
+.mood-selector{display:flex;justify-content:space-between;gap:6px}
+.mood-btn{flex:1;max-width:52px;aspect-ratio:1;border-radius:50%;font-size:1.5rem;background:var(--surface2);border:2px solid transparent;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.mood-btn.selected{border-color:var(--primary);background:var(--success-l);transform:scale(1.08)}
+.journal-area{width:100%;min-height:56px;padding:10px 0 0;border:none;border-top:.5px solid var(--border-l);margin-top:12px;font-size:.88rem;resize:none;background:transparent;line-height:1.6;color:var(--text)}
+.journal-area:focus{outline:none}
+.journal-status{font-size:.7rem;color:var(--text-l);text-align:right;min-height:14px;margin-top:2px}
+
+/* ─── QURAN INLINE STEPPER ────────────────────────────── */
+.quran-inline{background:var(--surface);border-radius:var(--r);padding:13px 14px;margin:10px 14px 0;border:.5px solid var(--border-l);display:flex;align-items:center;gap:12px}
+.qi-icon{font-size:1.4rem;flex-shrink:0}
+.qi-info{flex:1;min-width:0}
+.qi-label{font-size:.7rem;color:var(--text-l)}
+.qi-val{font-size:.95rem;font-weight:600;color:var(--text);margin-top:1px}
+.qi-stepper{display:flex;align-items:center;gap:2px;flex-shrink:0}
+.qi-btn{width:40px;height:40px;border-radius:10px;background:var(--surface2);border:.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:1.3rem;color:var(--primary);font-weight:500;-webkit-tap-highlight-color:transparent}
+.qi-btn:active{background:var(--border)}
+.qi-num{min-width:34px;text-align:center;font-size:1rem;font-weight:600;color:var(--text)}
+.qi-edit{font-size:.68rem;color:var(--primary-m);text-decoration:underline;margin-left:4px}
+
+.habit-group{margin:10px 14px 0}
+.hg-header{display:flex;align-items:center;justify-content:space-between;padding:0 2px;margin-bottom:6px}
+.hg-title{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-l)}
+.hg-pct{font-size:.72rem;font-weight:600;color:var(--hot)}
+.habit-list{background:var(--surface);border-radius:var(--r);overflow:hidden;border:.5px solid var(--border-l)}
+.habit-row{display:flex;align-items:center;padding:13px 14px;border-bottom:.5px solid var(--border-l);gap:12px;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:background .1s;min-height:54px}
 .habit-row:last-child{border-bottom:none}
 .habit-row:active{background:var(--surface2)}
-.habit-row.done{background:var(--success-l)}
+.habit-row.done{background:#F8FFFE}
 .habit-check{width:26px;height:26px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
 .habit-check svg{width:14px;height:14px;stroke:#fff;stroke-width:3;opacity:0;transition:opacity .15s}
 .habit-check.checked{background:var(--primary);border-color:var(--primary)}
@@ -145,20 +189,25 @@ section.view.active{display:block}
 .habit-info{flex:1;min-width:0}
 .habit-name{font-size:.92rem;font-weight:500}
 .habit-streak{font-size:.72rem;color:var(--text-l);margin-top:2px}
+.habit-streak.hot{color:var(--hot)}
 .habit-row.done .habit-name{color:var(--primary)}
-.bad-habit-row{background:var(--danger-l)}
-.bad-habit-row .habit-check{border-color:var(--danger)}
+.bad-habit-row{background:#FFF8F8}
+.bad-habit-row .habit-check{border-color:var(--border)}
 .bad-habit-row.slipped .habit-check{background:var(--danger);border-color:var(--danger)}
+.bad-streak{font-size:.72rem;margin-left:auto;white-space:nowrap;color:var(--hot);font-weight:600}
+.bad-streak.slipped{color:var(--danger)}
 
-/* ─── PRAYER CARD ──────────────────────────────────────── */
-.prayer-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
-.prayer-item{text-align:center;padding:10px 4px;border-radius:10px;background:var(--surface2)}
-.prayer-item.passed{opacity:.5}
-.prayer-item.next{background:var(--success-l);border:1px solid var(--primary-l)}
-.prayer-name{font-size:.7rem;font-weight:600;color:var(--text-m);margin-bottom:4px}
-.prayer-time{font-size:.82rem;font-weight:600;color:var(--text)}
+/* ─── PRAYER STRIP ─────────────────────────────────────── */
+.prayer-strip{background:var(--surface);border-bottom:.5px solid var(--border-l);display:flex;align-items:stretch;padding:0 4px}
+.prayer-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:9px 2px;gap:2px;text-align:center}
+.prayer-item.passed{opacity:.45}
+.prayer-item.next{background:#F0FFF4}
+.prayer-name{font-size:.62rem;font-weight:600;color:var(--text-l)}
+.prayer-time{font-size:.78rem;font-weight:600;color:var(--text)}
+.prayer-item.next .prayer-name,.prayer-item.next .prayer-time{color:var(--primary)}
+.prayer-cd{font-size:.6rem;color:var(--hot);font-weight:500}
 
-/* ─── COMPLETION RING ──────────────────────────────────── */
+/* ─── COMPLETION RING (legacy, kept for safety) ─────────── */
 .ring-wrap{display:flex;flex-direction:column;align-items:center;margin:8px 0}
 .ring-svg{width:100px;height:100px;transform:rotate(-90deg)}
 .ring-bg{fill:none;stroke:var(--border-l);stroke-width:8}
@@ -193,65 +242,78 @@ section.view.active{display:block}
 .wird-check.done{background:var(--primary)}
 .wird-check.done svg{stroke:#fff;opacity:1}
 
-/* ─── NOTES VIEW ────────────────────────────────────────── */
-.notes-tabs{display:flex;gap:8px;padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border-l)}
-.notes-tab{padding:8px 16px;border-radius:20px;font-size:.82rem;font-weight:600;color:var(--text-m);background:var(--surface2);transition:all .15s}
-.notes-tab.active{background:var(--primary);color:#fff}
-/* ─── NOTES + LINKS SPLIT VIEW ──────────────────────────────── */
-.nl-split{display:grid;grid-template-columns:1fr 1fr;min-height:300px}
-.nl-col{display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--border-l)}
-.nl-col:last-child{border-right:none}
-.nl-col-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border-l);background:var(--surface);position:sticky;top:var(--header-h);z-index:5}
-.nl-col-title{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--text-l)}
-.nl-add-btn{width:26px;height:26px;border-radius:50%;background:var(--primary);color:#fff;font-size:1rem;line-height:1;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;transition:background .15s;flex-shrink:0}
-.nl-add-btn:hover{background:var(--primary-m)}
-.nl-empty{padding:24px 12px;text-align:center;color:var(--text-l);font-size:.8rem;line-height:1.5}
-@media(max-width:580px){
-  .nl-split{grid-template-columns:1fr}
-  .nl-col{border-right:none;border-bottom:2px solid var(--border-l)}
-  .nl-col:last-child{border-bottom:none}
-}
-.note-item{padding:14px 16px;border-bottom:1px solid var(--border-l);display:flex;gap:12px;align-items:flex-start;transition:background .12s}
-.note-item:last-child{border-bottom:none}
+/* ─── TAB ROW (Read / Stats sub-tabs) ──────────────────── */
+.tracker-tabs{display:flex;background:var(--surface);border-bottom:.5px solid var(--border-l)}
+.tracker-tab{flex:1;padding:12px 4px;text-align:center;font-size:.82rem;font-weight:500;color:var(--text-l);background:none;border-bottom:2px solid transparent;transition:all .15s;-webkit-tap-highlight-color:transparent}
+.tracker-tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+
+/* ─── NOTES VIEW — segmented control ────────────────────── */
+.notes-seg{display:flex;background:var(--surface2);border-radius:12px;padding:3px;gap:3px;margin:12px 14px}
+.notes-tab{flex:1;padding:9px 4px;border-radius:9px;font-size:.8rem;font-weight:500;color:var(--text-m);background:none;text-align:center;transition:all .12s;-webkit-tap-highlight-color:transparent}
+.notes-tab.active{background:var(--surface);color:var(--primary);box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.nl-list{padding:0 14px}
+.nl-empty{padding:40px 16px;text-align:center;color:var(--text-l);font-size:.85rem;line-height:1.6}
+
+/* full-width note cards */
+.note-item{background:var(--surface);border-radius:var(--r);padding:13px 14px;margin-bottom:8px;border:.5px solid var(--border-l);display:flex;gap:12px;align-items:flex-start}
 .note-item.completed .note-title,.note-item.completed .note-content{text-decoration:line-through;opacity:.5}
-.note-check{width:22px;height:22px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;margin-top:2px;transition:all .15s}
-.note-check.done{background:var(--primary);border-color:var(--primary)}
-.note-check.done svg{stroke:#fff}
-.note-check svg{width:12px;height:12px;stroke:transparent}
+.note-item.partner-note{border-color:var(--partner-border);background:#FDFBFC}
+.note-partner-label{font-size:.65rem;color:var(--partner-color);font-weight:600;margin-bottom:4px}
+.note-check{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;margin:-9px 0 -9px -9px;transition:all .15s;-webkit-tap-highlight-color:transparent}
+.note-check::after{content:'';width:24px;height:24px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;transition:all .15s}
+.note-check.done::after{background:var(--primary);border-color:var(--primary);content:'✓';color:#fff;font-size:13px;font-weight:700;line-height:20px;text-align:center}
 .note-body{flex:1;min-width:0}
-.note-title{font-size:.92rem;font-weight:600;color:var(--text);line-height:1.35;margin-bottom:4px;word-break:break-word}
-.note-content{font-size:.86rem;line-height:1.6;color:var(--text-m);white-space:pre-wrap;word-break:break-word;margin-bottom:4px}
+.note-title{font-size:.92rem;font-weight:600;color:var(--text);line-height:1.35;margin-bottom:3px;word-break:break-word}
+.note-content{font-size:.86rem;line-height:1.6;color:var(--text-m);white-space:pre-wrap;word-break:break-word;margin-bottom:6px}
 .note-meta{font-size:.7rem;color:var(--text-l);margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.note-actions{display:flex;gap:4px;flex-shrink:0;margin-top:1px}
+.note-actions{display:flex;gap:6px;flex-shrink:0;margin-top:1px}
+.note-act-btn{width:32px;height:32px;border-radius:8px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .note-title[dir=rtl],.note-content[dir=rtl]{font-family:'Geeza Pro','Traditional Arabic','Segoe UI',var(--font-body);line-height:1.9;text-align:right}
 .note-title[dir=rtl]{font-size:.95rem}
 .note-content[dir=rtl]{font-size:.9rem}
 .note-textarea{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:var(--r-sm);font-size:.9rem;line-height:1.7;resize:vertical;background:var(--bg);color:var(--text);min-height:120px;font-family:var(--font-body);transition:border-color .2s}
 .note-textarea:focus{border-color:var(--primary-m);outline:none}
 .note-textarea[dir=rtl]{font-family:'Geeza Pro','Traditional Arabic','Segoe UI',var(--font-body);font-size:.95rem;line-height:1.9;text-align:right}
-.idea-card{padding:14px 16px;border-bottom:1px solid var(--border-l)}
-.idea-cat{font-size:.68rem;font-weight:600;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
-.idea-text{font-size:.88rem;line-height:1.4}
-.link-card{padding:14px 16px;border-bottom:1px solid var(--border-l)}
-.link-title{font-size:.9rem;font-weight:500;color:var(--primary-m);margin-bottom:2px}
+.ntag{font-size:.65rem;padding:2px 8px;border-radius:10px;font-weight:600}
+.ntag-reminder{background:#FEF3C7;color:#92400E}
+.ntag-shared{background:#FCE7F3;color:#9D174D}
+
+/* link cards full-width */
+.idea-card{background:var(--surface);border-radius:var(--r);padding:13px 14px;margin-bottom:8px;border:.5px solid var(--border-l);display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.idea-cat{font-size:.62rem;font-weight:700;text-transform:uppercase;color:var(--accent);margin-bottom:4px;letter-spacing:.05em}
+.idea-text{font-size:.88rem;line-height:1.5}
+.link-card{background:var(--surface);border-radius:var(--r);padding:13px 14px;margin-bottom:8px;border:.5px solid var(--border-l);display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.link-title{font-size:.9rem;font-weight:500;color:var(--primary-m);margin-bottom:2px;display:block}
 .link-url{font-size:.72rem;color:var(--text-l);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .link-notes{font-size:.8rem;color:var(--text-m);margin-top:4px}
 
 /* ─── SHARED BADGE ─────────────────────────────────────── */
-.shared-badge{display:inline-flex;align-items:center;gap:4px;font-size:.68rem;font-weight:600;padding:2px 8px;border-radius:10px;background:#FCE7F3;color:#9D174D;margin-left:8px}
+.shared-badge{display:inline-flex;align-items:center;gap:4px;font-size:.65rem;font-weight:600;padding:2px 8px;border-radius:10px;background:#FCE7F3;color:#9D174D}
 .shared-badge::before{content:'💕'}
-.share-toggle{display:flex;align-items:center;gap:10px;padding:10px 0;margin-top:8px;border-top:1px solid var(--border-l)}
+.share-toggle{display:flex;align-items:center;gap:10px;padding:12px 0;margin-top:8px;border-top:1px solid var(--border-l)}
 .share-toggle label{font-size:.85rem;color:var(--text-m);flex:1}
 
+/* ─── QUOTES DASHBOARD ─────────────────────────────────── */
+.quote-card{background:var(--surface);border-radius:var(--r);padding:14px;margin-bottom:8px;border:.5px solid var(--border-l)}
+.quote-text{font-family:var(--font-head);font-size:.95rem;line-height:1.5;color:var(--text);font-style:italic;margin-bottom:6px}
+.quote-text[dir=rtl]{font-family:'Geeza Pro','Traditional Arabic',var(--font-head);font-style:normal;line-height:1.9;text-align:right}
+.quote-author{font-size:.75rem;color:var(--text-l);margin-bottom:10px}
+.quote-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding-top:10px;border-top:.5px solid var(--border-l)}
+.qmode-pill{font-size:.65rem;padding:3px 9px;border-radius:12px;font-weight:600;background:var(--quote-bg);color:var(--quote-c)}
+.qmode-pill.timed{background:#DBEAFE;color:#1E40AF}
+.qmode-pill.once{background:var(--surface2);color:var(--text-m)}
+.quote-actions{margin-left:auto;display:flex;gap:6px}
+.quote-fab-note{font-size:.72rem;color:var(--text-l);text-align:center;padding:10px 16px;line-height:1.5}
+
 /* ─── SHARED GOALS ─────────────────────────────────────── */
-.shared-goals-section{margin:12px 16px}
-.shared-goal-card{background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;box-shadow:var(--shadow)}
+.shared-goals-section{margin:12px 14px}
+.shared-goal-card{background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;border:.5px solid var(--border-l)}
 .shared-goal-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
 .shared-goal-icon{font-size:1.5rem}
 .shared-goal-title{flex:1;font-weight:600;font-size:.95rem}
 .shared-goal-progress{margin-bottom:12px}
 .shared-goal-bar{height:8px;background:var(--border-l);border-radius:4px;overflow:hidden;margin-bottom:6px}
-.shared-goal-bar-fill{height:100%;background:linear-gradient(90deg, var(--primary) 0%, var(--primary-l) 100%);border-radius:4px;transition:width .3s}
+.shared-goal-bar-fill{height:100%;background:var(--primary);border-radius:4px;transition:width .3s}
 .shared-goal-stats{display:flex;justify-content:space-between;font-size:.75rem;color:var(--text-m)}
 .shared-goal-people{display:flex;gap:16px;padding-top:12px;border-top:1px solid var(--border-l)}
 .shared-goal-person{flex:1;text-align:center}
@@ -294,44 +356,66 @@ section.view.active{display:block}
 .week-dot.today{border:2px solid var(--accent)}
 .wr-textarea{width:100%;min-height:80px;padding:10px;border:1.5px solid var(--border);border-radius:8px;font-size:.85rem;resize:none;background:var(--bg)}
 
-/* ─── SETTINGS ──────────────────────────────────────────── */
-.settings-section{padding:0 16px;margin-bottom:24px}
+/* ─── PROFILE HEADER (Settings) ───────────────────────── */
+.profile-header{background:var(--primary);padding:calc(20px + var(--sat)) 16px 18px;display:flex;align-items:center;gap:14px}
+.ph-avatar{width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;font-size:1.7rem;flex-shrink:0}
+.ph-name{font-size:1.1rem;color:#fff;font-weight:500;font-family:var(--font-head)}
+.ph-sub{font-size:.72rem;color:rgba(255,255,255,.55);margin-top:2px}
+
+/* ─── SETTINGS LIST ─────────────────────────────────────── */
+.settings-list{background:var(--surface);border-radius:var(--r);border:.5px solid var(--border-l);overflow:hidden;margin:10px 14px 0}
+.sl-row{display:flex;align-items:center;padding:13px 14px;border-bottom:.5px solid var(--border-l);gap:12px;min-height:54px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.sl-row:last-child{border-bottom:none}
+.sl-row:active{background:var(--surface2)}
+.sl-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
+.sl-icon.green{background:var(--success-l)}
+.sl-icon.blue{background:#DBEAFE}
+.sl-icon.amber{background:#FEF3C7}
+.sl-icon.red{background:var(--danger-l)}
+.sl-icon.purple{background:var(--quote-bg)}
+.sl-icon.pink{background:#FDF2F8}
+.sl-icon.gray{background:var(--surface2)}
+.sl-label{flex:1;font-size:.9rem;color:var(--text);font-weight:500}
+.sl-value{font-size:.8rem;color:var(--text-l)}
+.sl-arrow{font-size:1.1rem;color:#C5BFB7}
+.settings-section{padding:0 14px;margin-bottom:20px}
 .settings-section h3{font-family:var(--font-head);font-size:.95rem;margin-bottom:12px;color:var(--text)}
 .setting-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border-l)}
 .setting-row:last-child{border-bottom:none}
 .setting-label{font-size:.88rem}
 .setting-value{font-size:.85rem;color:var(--text-m)}
+.sub-page-back{display:flex;align-items:center;gap:6px;font-size:.85rem;color:var(--primary-m);padding:14px 14px 4px;cursor:pointer;font-weight:500}
 
 /* ─── HABITS MANAGER ────────────────────────────────────── */
-.habit-mgr-list{background:var(--surface);border-radius:var(--r);margin:0 16px 12px;overflow:hidden}
-.habit-mgr-row{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border-l);gap:10px}
+.habit-mgr-list{background:var(--surface);border-radius:var(--r);margin:0 14px 12px;overflow:hidden;border:.5px solid var(--border-l)}
+.habit-mgr-row{display:flex;align-items:center;padding:12px 14px;border-bottom:.5px solid var(--border-l);gap:10px;min-height:52px}
 .habit-mgr-row:last-child{border-bottom:none}
 .habit-mgr-name{flex:1;font-size:.88rem}
-.toggle{position:relative;width:40px;height:22px;flex-shrink:0}
+.toggle{position:relative;width:44px;height:26px;flex-shrink:0}
 .toggle input{opacity:0;width:0;height:0}
-.toggle-slider{position:absolute;inset:0;background:var(--border);border-radius:11px;cursor:pointer;transition:.2s}
-.toggle-slider::before{content:'';position:absolute;width:18px;height:18px;left:2px;top:2px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle-slider{position:absolute;inset:0;background:var(--border);border-radius:13px;cursor:pointer;transition:.2s}
+.toggle-slider::before{content:'';position:absolute;width:20px;height:20px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
 .toggle input:checked+.toggle-slider{background:var(--primary-l)}
 .toggle input:checked+.toggle-slider::before{transform:translateX(18px)}
 
 /* ─── MODAL ──────────────────────────────────────────── */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
 .modal-overlay.open{opacity:1;pointer-events:all}
-.modal-box{background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;padding:8px 0 env(safe-area-inset-bottom);transform:translateY(20px);transition:transform .25s ease;box-shadow:var(--shadow-lg)}
+.modal-box{background:var(--surface);border-radius:22px 22px 0 0;width:100%;max-width:480px;max-height:90dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 0 calc(20px + var(--sab));transform:translateY(20px);transition:transform .25s ease;box-shadow:var(--shadow-lg)}
 .modal-overlay.open .modal-box{transform:translateY(0)}
-.modal-handle{width:36px;height:4px;background:var(--border);border-radius:2px;margin:10px auto 16px}
-.modal-title{font-family:var(--font-head);font-size:1.1rem;font-weight:600;padding:0 20px 16px}
+.modal-handle{width:38px;height:4px;background:var(--border);border-radius:2px;margin:10px auto 16px}
+.modal-title{font-family:var(--font-head);font-size:1.15rem;font-weight:600;padding:0 20px 16px}
 .modal-body{padding:0 20px 20px}
-.modal-actions{display:flex;gap:10px;padding:0 20px 20px}
+.modal-actions{display:flex;gap:10px;padding:0 20px 4px}
 .modal-actions .btn{flex:1}
 
 /* ─── TOAST ──────────────────────────────────────────── */
-#toast{position:fixed;bottom:calc(var(--nav-h) + 12px);left:50%;transform:translateX(-50%) translateY(16px);background:var(--text);color:#fff;padding:10px 18px;border-radius:30px;font-size:.82rem;font-weight:500;opacity:0;transition:all .3s;z-index:900;white-space:nowrap;pointer-events:none}
+#toast{position:fixed;bottom:calc(var(--nav-h) + var(--sab) + 12px);left:50%;transform:translateX(-50%) translateY(16px);background:var(--text);color:#fff;padding:11px 18px;border-radius:30px;font-size:.82rem;font-weight:500;opacity:0;transition:all .3s;z-index:900;white-space:nowrap;pointer-events:none;max-width:90vw;text-align:center}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
 /* ─── FAB ─────────────────────────────────────────────── */
-.fab{position:fixed;right:20px;bottom:calc(var(--nav-h) + 16px);width:52px;height:52px;border-radius:50%;background:var(--primary);color:#fff;font-size:1.5rem;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(27,67,50,.35);z-index:90;transition:all .2s;-webkit-tap-highlight-color:transparent}
-.fab:hover{background:var(--primary-m);transform:scale(1.05)}
+.fab{position:fixed;right:18px;bottom:calc(var(--nav-h) + var(--sab) + 14px);width:52px;height:52px;border-radius:50%;background:var(--primary);color:#fff;font-size:1.6rem;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(27,67,50,.35);z-index:90;transition:transform .15s;-webkit-tap-highlight-color:transparent}
+.fab:active{transform:scale(.92)}
 .fab.hidden{display:none}
 
 /* ─── UTILITIES ──────────────────────────────────────── */
@@ -361,10 +445,10 @@ section.view.active{display:block}
   PROFILE SELECT SCREEN
 ═══════════════════════════════════════════════════ -->
 <div id="profile-screen" class="splash-screen">
-  <div class="splash-logo">Life Assistant</div>
   <div class="splash-sub">بسم الله الرحمن الرحيم</div>
+  <div class="splash-logo">Life Assistant</div>
   <div class="splash-card">
-    <h2>Who's logging in?</h2>
+    <h2>Who's logging in today?</h2>
     <div class="profile-select" id="profile-select">
       <!-- Profiles loaded dynamically -->
     </div>
@@ -427,74 +511,88 @@ section.view.active{display:block}
 
     <!-- ─── TODAY VIEW ─────────────────────────────────── -->
     <section id="view-today" class="view active">
-      <div class="date-header">
-        <div class="greeting" id="greeting">السلام عليكم</div>
-        <div class="date-day" id="date-day">Wednesday</div>
-        <div class="date-full" id="date-full">April 2, 2025</div>
-        <div class="date-nav" id="date-nav">
-          <button onclick="App.stepDay(-1)">← Prev</button>
-          <button onclick="App.goToday()">Today</button>
-          <button onclick="App.stepDay(1)">Next →</button>
-        </div>
-      </div>
-
-      <!-- Partner Mood Card -->
-      <div id="partner-mood-card" class="partner-mood-card hidden">
-        <div class="partner-mood-emoji" id="partner-mood-emoji">🌸</div>
-        <div class="partner-mood-text">
-          <div class="partner-mood-name" id="partner-mood-name">Zahraa is feeling</div>
-          <div class="partner-mood-status" id="partner-mood-status">😊 Happy today</div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">How are you feeling?</div>
-        <div class="mood-selector" id="mood-selector">
-          <button class="mood-btn" data-mood="1" onclick="App.setMood(1)">😞</button>
-          <button class="mood-btn" data-mood="2" onclick="App.setMood(2)">😕</button>
-          <button class="mood-btn" data-mood="3" onclick="App.setMood(3)">😐</button>
-          <button class="mood-btn" data-mood="4" onclick="App.setMood(4)">😊</button>
-          <button class="mood-btn" data-mood="5" onclick="App.setMood(5)">😄</button>
-        </div>
-        <textarea class="journal-area" id="journal-area" placeholder="Write your thoughts..."></textarea>
-        <div style="font-size:.72rem;color:var(--text-l);margin-top:6px;text-align:right" id="journal-save-status"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">🕌 Prayer Times <span id="prayer-countdown" style="font-size:.75rem;font-weight:400;color:var(--text-l)"></span></div>
-        <div class="prayer-grid" id="prayer-grid"></div>
-      </div>
-
-      <div class="card">
-        <div class="card-title">Today's Progress</div>
-        <div class="ring-wrap">
-          <svg class="ring-svg" viewBox="0 0 52 52">
-            <circle class="ring-bg" cx="26" cy="26" r="24"/>
-            <circle class="ring-prog" id="ring-prog" cx="26" cy="26" r="24"/>
-          </svg>
-          <div class="ring-center">
-            <div class="ring-pct" id="ring-pct">0%</div>
-            <div class="ring-count" id="ring-count">0 / 0</div>
+      <div class="hero">
+        <div class="hero-top">
+          <div>
+            <div class="hero-greeting" id="greeting">السلام عليكم</div>
+            <div class="hero-name" id="hero-name">Mohammad</div>
+          </div>
+          <div class="hero-right">
+            <div class="hero-partner hidden" id="hero-partner" onclick="App.showPartnerMood()">
+              <span class="hp-emoji" id="hp-emoji">🌸</span>
+              <span class="hp-mood" id="hp-mood">😊</span>
+            </div>
+            <div class="hero-ring">
+              <svg width="42" height="42" viewBox="0 0 42 42">
+                <circle class="hr-bg" cx="21" cy="21" r="16"/>
+                <circle class="hr-prog" id="ring-prog" cx="21" cy="21" r="16"/>
+              </svg>
+              <div class="hr-pct" id="ring-pct">0%</div>
+            </div>
           </div>
         </div>
+        <div class="date-strip" id="date-strip"></div>
       </div>
 
-      <div class="section-label">☪️ Islamic Habits</div>
-      <div class="habit-list" id="islamic-habits"></div>
+      <div class="past-banner hidden" id="past-banner">
+        <span id="past-banner-text">Viewing a past day</span>
+        <button onclick="App.goToday()">Back to today</button>
+      </div>
 
-      <div class="section-label">✅ Regular Habits</div>
-      <div class="habit-list" id="regular-habits"></div>
+      <div class="prayer-strip" id="prayer-strip">
+        <div class="prayer-grid" id="prayer-grid" style="display:contents"></div>
+      </div>
 
-      <div class="section-label">🚫 Habits to Avoid</div>
-      <div class="habit-list" id="bad-habits"></div>
+      <div class="today-body">
+        <div class="mood-row">
+          <div class="mood-header"><span class="mood-label">How are you feeling?</span></div>
+          <div class="mood-selector" id="mood-selector">
+            <button class="mood-btn" data-mood="1" onclick="App.setMood(1)">😞</button>
+            <button class="mood-btn" data-mood="2" onclick="App.setMood(2)">😕</button>
+            <button class="mood-btn" data-mood="3" onclick="App.setMood(3)">😐</button>
+            <button class="mood-btn" data-mood="4" onclick="App.setMood(4)">😊</button>
+            <button class="mood-btn" data-mood="5" onclick="App.setMood(5)">😄</button>
+          </div>
+          <textarea class="journal-area" id="journal-area" placeholder="What's on your mind today..." autocorrect="off" spellcheck="false"></textarea>
+          <div class="journal-status" id="journal-save-status"></div>
+        </div>
+
+        <div class="quran-inline" id="quran-inline">
+          <div class="qi-icon">📖</div>
+          <div class="qi-info">
+            <div class="qi-label">Quran pages today</div>
+            <div class="qi-val" id="qi-val">0 pages</div>
+          </div>
+          <div class="qi-stepper">
+            <button class="qi-btn" onclick="App.quranStep(-1)" aria-label="Decrease">−</button>
+            <span class="qi-num" id="qi-num">0</span>
+            <button class="qi-btn" onclick="App.quranStep(1)" aria-label="Increase">+</button>
+          </div>
+        </div>
+
+        <div class="habit-group">
+          <div class="hg-header"><span class="hg-title">☪️ Islamic</span><span class="hg-pct" id="islamic-pct"></span></div>
+          <div class="habit-list" id="islamic-habits"></div>
+        </div>
+
+        <div class="habit-group">
+          <div class="hg-header"><span class="hg-title">✅ Regular</span><span class="hg-pct" id="regular-pct"></span></div>
+          <div class="habit-list" id="regular-habits"></div>
+        </div>
+
+        <div class="habit-group">
+          <div class="hg-header"><span class="hg-title">🚫 Avoid</span></div>
+          <div class="habit-list" id="bad-habits"></div>
+        </div>
+      </div>
     </section>
 
-    <!-- ─── TRACKERS VIEW ────────────────────────────────── -->
+    <!-- ─── READ / TRACKERS VIEW ─────────────────────────── -->
     <section id="view-trackers" class="view">
       <div class="tracker-tabs">
-        <button class="tracker-tab active" onclick="App.switchTracker('books',this)">📚 Books</button>
-        <button class="tracker-tab" onclick="App.switchTracker('quran',this)">📖 Quran</button>
-        <button class="tracker-tab" onclick="App.switchTracker('goals',this)">💕 Goals</button>
+        <button class="tracker-tab active" onclick="App.switchTracker('books',this)">Books</button>
+        <button class="tracker-tab" onclick="App.switchTracker('quran',this)">Quran</button>
+        <button class="tracker-tab" onclick="App.switchTracker('goals',this)">Goals</button>
       </div>
       <div id="tracker-books"></div>
       <div id="tracker-quran" class="hidden"></div>
@@ -503,141 +601,158 @@ section.view.active{display:block}
 
     <!-- ─── NOTES VIEW ────────────────────────────────────── -->
     <section id="view-notes" class="view">
-      <div class="notes-tabs">
-        <button class="notes-tab active" onclick="App.switchNoteTab('combined',this)">📝 Notes &amp; Links</button>
+      <div class="notes-seg">
+        <button class="notes-tab active" onclick="App.switchNoteTab('notes',this)">📝 Notes</button>
+        <button class="notes-tab" onclick="App.switchNoteTab('links',this)">🔗 Links</button>
         <button class="notes-tab" onclick="App.switchNoteTab('ideas',this)">💡 Ideas</button>
       </div>
-      <!-- Split view: Notes (left/top) + Links (right/bottom) -->
-      <div id="nl-combined-view" class="nl-split">
-        <div class="nl-col">
-          <div class="nl-col-header">
-            <span class="nl-col-title">📝 Notes</span>
-            <button class="nl-add-btn" onclick="App.addNoteModal()" title="New note">+</button>
-          </div>
-          <div id="nl-notes-panel"></div>
-        </div>
-        <div class="nl-col">
-          <div class="nl-col-header">
-            <span class="nl-col-title">🔗 Links</span>
-            <button class="nl-add-btn" onclick="App.addLinkModal()" title="Save link">+</button>
-          </div>
-          <div id="nl-links-panel"></div>
-        </div>
-      </div>
-      <!-- Ideas view -->
-      <div id="nl-ideas-view" class="hidden">
-        <div id="notes-content"></div>
-      </div>
+      <div class="nl-list" id="nl-notes-view"><div id="nl-notes-panel"></div></div>
+      <div class="nl-list hidden" id="nl-links-view"><div id="nl-links-panel"></div></div>
+      <div class="nl-list hidden" id="nl-ideas-view"><div id="notes-content"></div></div>
     </section>
 
-    <!-- ─── ANALYTICS VIEW ────────────────────────────────── -->
+    <!-- ─── STATS / ANALYTICS VIEW ───────────────────────── -->
     <section id="view-analytics" class="view">
       <div class="tracker-tabs">
-        <button class="tracker-tab active" onclick="App.switchAnalyticsTab('stats',this)">📊 Stats</button>
-        <button class="tracker-tab" onclick="App.switchAnalyticsTab('weekly',this)">📅 Weekly</button>
+        <button class="tracker-tab active" onclick="App.switchAnalyticsTab('stats',this)">Overview</button>
+        <button class="tracker-tab" onclick="App.switchAnalyticsTab('weekly',this)">Weekly</button>
       </div>
       <div id="analytics-stats-panel"></div>
       <div id="analytics-weekly-panel" class="hidden"></div>
     </section>
 
-    <!-- ─── SETTINGS VIEW ────────────────────────────────── -->
+    <!-- ─── PROFILE / SETTINGS VIEW ──────────────────────── -->
     <section id="view-settings" class="view">
-      <div class="card" id="profile-info-card">
-        <div style="display:flex;align-items:center;gap:12px">
-          <span style="font-size:2.5rem" id="settings-profile-emoji">🌙</span>
-          <div>
-            <div style="font-weight:600;font-size:1.1rem" id="settings-profile-name">Mohammad</div>
-            <div style="font-size:.8rem;color:var(--text-l)">Life Assistant</div>
+      <div class="profile-header">
+        <div class="ph-avatar" id="settings-profile-emoji">🌙</div>
+        <div>
+          <div class="ph-name" id="settings-profile-name">Mohammad</div>
+          <div class="ph-sub">Life Assistant · Couples Edition</div>
+        </div>
+      </div>
+
+      <!-- MAIN SETTINGS MENU -->
+      <div id="settings-menu">
+        <div class="settings-list">
+          <div class="sl-row" onclick="App.openSettingsPage('habits')">
+            <div class="sl-icon green">☪️</div>
+            <div class="sl-label">Habits manager</div>
+            <div class="sl-arrow">›</div>
+          </div>
+          <div class="sl-row" onclick="App.openSettingsPage('quotes')">
+            <div class="sl-icon purple">💡</div>
+            <div class="sl-label">Motivation &amp; quotes</div>
+            <div class="sl-arrow">›</div>
+          </div>
+          <div class="sl-row" onclick="App.nav('trackers',document.querySelector('[data-view=trackers]'));setTimeout(function(){App.switchTracker('goals',document.querySelectorAll('#view-trackers .tracker-tab')[2])},50)">
+            <div class="sl-icon amber">🎯</div>
+            <div class="sl-label">Shared goals</div>
+            <div class="sl-arrow">›</div>
+          </div>
+          <div class="sl-row" onclick="App.openSettingsPage('notifications')">
+            <div class="sl-icon blue">🔔</div>
+            <div class="sl-label">Notifications</div>
+            <div class="sl-value" id="notif-menu-status">—</div>
+            <div class="sl-arrow">›</div>
           </div>
         </div>
-      </div>
 
-      <div class="section-label">🔐 Security</div>
-      <div class="settings-section">
-        <div class="card" style="margin:0">
-          <div class="field"><label>New PIN</label><input type="password" inputmode="numeric" id="new-pin" placeholder="••••" maxlength="6"></div>
-          <div class="field"><label>Confirm PIN</label><input type="password" inputmode="numeric" id="confirm-pin" placeholder="••••" maxlength="6"></div>
-          <button class="btn btn-primary btn-sm" onclick="App.changePIN()">Update PIN</button>
-        </div>
-      </div>
-
-      <div class="section-label">🔔 Notifications</div>
-      <div class="settings-section">
-        <div class="card" style="margin:0">
-          <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-l);margin-bottom:10px">Status</div>
-          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
-            <div style="display:flex;justify-content:space-between">
-              <span style="font-size:.82rem;color:var(--text-m)">PWA (Home Screen)</span>
-              <span id="diag-pwa" style="font-size:.8rem">—</span>
-            </div>
-            <div style="display:flex;justify-content:space-between">
-              <span style="font-size:.82rem;color:var(--text-m)">Permission</span>
-              <span id="diag-perm" style="font-size:.8rem">—</span>
-            </div>
-            <div style="display:flex;justify-content:space-between">
-              <span style="font-size:.82rem;color:var(--text-m)">Push Subscription</span>
-              <span id="diag-push" style="font-size:.8rem">—</span>
-            </div>
-            <div style="display:flex;justify-content:space-between">
-              <span style="font-size:.82rem;color:var(--text-m)">Overall</span>
-              <span id="notif-status" style="font-size:.8rem">—</span>
-            </div>
-          </div>
-          <button class="btn btn-primary btn-sm btn-full" onclick="App.requestNotifications()">Enable Notifications</button>
-          <button class="btn btn-sm btn-full" style="background:var(--accent-l);color:var(--accent);font-weight:600;margin-top:8px" onclick="App.testNotification()">🔔 Test (fires in 5 sec)</button>
-          <div id="notif-test-log" style="font-size:.76rem;color:var(--text-m);margin-top:8px;line-height:1.7;min-height:16px"></div>
-        </div>
-      </div>
-
-      <div class="section-label">⚙️ Habits Manager</div>
-      <div class="settings-section">
-        <div style="margin-bottom:8px;font-size:.8rem;color:var(--text-m)">☪️ Islamic Habits</div>
-        <div class="habit-mgr-list" id="mgr-islamic"></div>
-        <div class="add-row">
-          <input type="text" id="new-islamic-name" placeholder="New Islamic habit...">
-          <button class="btn btn-primary btn-sm" onclick="App.addHabit('islamic')">Add</button>
-        </div>
-
-        <div style="margin:16px 0 8px;font-size:.8rem;color:var(--text-m)">✅ Regular Habits</div>
-        <div class="habit-mgr-list" id="mgr-regular"></div>
-        <div class="add-row">
-          <input type="text" id="new-regular-name" placeholder="New regular habit...">
-          <button class="btn btn-primary btn-sm" onclick="App.addHabit('regular')">Add</button>
-        </div>
-
-        <div style="margin:16px 0 8px;font-size:.8rem;color:var(--text-m)">🚫 Bad Habits</div>
-        <div class="habit-mgr-list" id="mgr-bad"></div>
-        <div class="add-row">
-          <input type="text" id="new-bad-name" placeholder="Habit to avoid...">
-          <button class="btn btn-primary btn-sm" onclick="App.addHabit('bad')">Add</button>
-        </div>
-      </div>
-
-      <div class="section-label">👤 Partner Settings</div>
-      <div class="settings-section">
-        <div class="card" style="margin:0">
-          <div class="setting-row">
-            <span class="setting-label">Show my mood to partner</span>
+        <div class="settings-list">
+          <div class="sl-row">
+            <div class="sl-icon pink">💕</div>
+            <div class="sl-label">Show mood to partner</div>
             <label class="toggle">
               <input type="checkbox" id="show-mood-toggle" checked onchange="App.toggleShowMood()">
               <span class="toggle-slider"></span>
             </label>
           </div>
+          <div class="sl-row" onclick="App.openSettingsPage('pin')">
+            <div class="sl-icon gray">🔐</div>
+            <div class="sl-label">Change PIN</div>
+            <div class="sl-arrow">›</div>
+          </div>
+        </div>
+
+        <div class="settings-list">
+          <div class="sl-row" onclick="App.exportJSON()">
+            <div class="sl-icon gray">💾</div>
+            <div class="sl-label">Export data (JSON)</div>
+            <div class="sl-arrow">›</div>
+          </div>
+          <div class="sl-row" onclick="App.exportCSV()">
+            <div class="sl-icon gray">📊</div>
+            <div class="sl-label">Export data (CSV)</div>
+            <div class="sl-arrow">›</div>
+          </div>
+        </div>
+
+        <div style="text-align:center;margin:24px 0;color:var(--text-l);font-size:.72rem">
+          Life Assistant v3.0 — Couples Edition<br>
+          <button onclick="App.logout()" style="color:var(--danger);font-size:.82rem;margin-top:10px;font-weight:600">Sign Out</button>
         </div>
       </div>
 
-      <div class="section-label">💾 Export Data</div>
-      <div class="settings-section">
-        <div class="card" style="margin:0;display:flex;gap:10px">
-          <button class="btn btn-secondary btn-sm" onclick="App.exportJSON()">⬇ JSON</button>
-          <button class="btn btn-secondary btn-sm" onclick="App.exportCSV()">⬇ CSV</button>
+      <!-- SUB-PAGE: HABITS MANAGER -->
+      <div id="settings-habits" class="hidden">
+        <div class="sub-page-back" onclick="App.closeSettingsPage()">‹ Back</div>
+        <div class="section-label">☪️ Islamic Habits</div>
+        <div class="habit-mgr-list" id="mgr-islamic"></div>
+        <div style="margin:0 14px 8px"><div class="add-row">
+          <input type="text" id="new-islamic-name" placeholder="New Islamic habit...">
+          <button class="btn btn-primary btn-sm" onclick="App.addHabit('islamic')">Add</button>
+        </div></div>
+        <div class="section-label">✅ Regular Habits</div>
+        <div class="habit-mgr-list" id="mgr-regular"></div>
+        <div style="margin:0 14px 8px"><div class="add-row">
+          <input type="text" id="new-regular-name" placeholder="New regular habit...">
+          <button class="btn btn-primary btn-sm" onclick="App.addHabit('regular')">Add</button>
+        </div></div>
+        <div class="section-label">🚫 Habits to Avoid</div>
+        <div class="habit-mgr-list" id="mgr-bad"></div>
+        <div style="margin:0 14px 24px"><div class="add-row">
+          <input type="text" id="new-bad-name" placeholder="Habit to avoid...">
+          <button class="btn btn-primary btn-sm" onclick="App.addHabit('bad')">Add</button>
+        </div></div>
+      </div>
+
+      <!-- SUB-PAGE: QUOTES -->
+      <div id="settings-quotes" class="hidden">
+        <div class="sub-page-back" onclick="App.closeSettingsPage()">‹ Back</div>
+        <div class="section-label">💡 Motivation &amp; Quotes</div>
+        <div id="quotes-list" style="padding:0 14px"></div>
+        <div style="padding:0 14px"><button class="btn btn-primary btn-full mt-8" onclick="App.addQuoteModal()">+ Add a quote</button></div>
+        <div class="quote-fab-note">Quotes are delivered as notifications based on the mode you pick. On iPhone, all notifications use your system sound — custom per-type sounds aren't supported by iOS for web apps.</div>
+      </div>
+
+      <!-- SUB-PAGE: NOTIFICATIONS -->
+      <div id="settings-notifications" class="hidden">
+        <div class="sub-page-back" onclick="App.closeSettingsPage()">‹ Back</div>
+        <div class="settings-section" style="margin-top:8px">
+          <div class="card" style="margin:0">
+            <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-l);margin-bottom:10px">Status</div>
+            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+              <div style="display:flex;justify-content:space-between"><span style="font-size:.82rem;color:var(--text-m)">PWA (Home Screen)</span><span id="diag-pwa" style="font-size:.8rem">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="font-size:.82rem;color:var(--text-m)">Permission</span><span id="diag-perm" style="font-size:.8rem">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="font-size:.82rem;color:var(--text-m)">Push Subscription</span><span id="diag-push" style="font-size:.8rem">—</span></div>
+              <div style="display:flex;justify-content:space-between"><span style="font-size:.82rem;color:var(--text-m)">Overall</span><span id="notif-status" style="font-size:.8rem">—</span></div>
+            </div>
+            <button class="btn btn-primary btn-sm btn-full" onclick="App.requestNotifications()">Enable Notifications</button>
+            <button class="btn btn-sm btn-full" style="background:var(--accent-l);color:#7a5a10;font-weight:600;margin-top:8px" onclick="App.testNotification()">🔔 Test (fires in 5 sec)</button>
+            <div id="notif-test-log" style="font-size:.76rem;color:var(--text-m);margin-top:8px;line-height:1.7;min-height:16px"></div>
+          </div>
         </div>
       </div>
 
-      <div style="text-align:center;margin-top:32px;color:var(--text-l);font-size:.75rem">
-        Life Assistant v2.0 — Couples Edition<br>
-        Mohammad 🌙 & Zahraa 🌸<br>
-        <button onclick="App.logout()" style="color:var(--danger);font-size:.78rem;margin-top:8px">Sign Out</button>
+      <!-- SUB-PAGE: PIN -->
+      <div id="settings-pin" class="hidden">
+        <div class="sub-page-back" onclick="App.closeSettingsPage()">‹ Back</div>
+        <div class="settings-section" style="margin-top:8px">
+          <div class="card" style="margin:0">
+            <div class="field"><label>New PIN</label><input type="password" inputmode="numeric" autocomplete="new-password" id="new-pin" placeholder="••••" maxlength="6"></div>
+            <div class="field"><label>Confirm PIN</label><input type="password" inputmode="numeric" autocomplete="new-password" id="confirm-pin" placeholder="••••" maxlength="6"></div>
+            <button class="btn btn-primary btn-sm btn-full" onclick="App.changePIN()">Update PIN</button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -646,24 +761,24 @@ section.view.active{display:block}
   <!-- Bottom Nav -->
   <nav id="bottom-nav">
     <div class="nav-item active" data-view="today" onclick="App.nav('today',this)">
-      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-      Today
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"/></svg>
+      <span>Today</span><div class="nav-dot"></div>
     </div>
     <div class="nav-item" data-view="trackers" onclick="App.nav('trackers',this)">
       <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-      Trackers
+      <span>Read</span><div class="nav-dot"></div>
     </div>
     <div class="nav-item" data-view="notes" onclick="App.nav('notes',this)">
-      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-      Notes
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <span>Notes</span><div class="nav-dot"></div>
     </div>
     <div class="nav-item" data-view="analytics" onclick="App.nav('analytics',this)">
       <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-      Analytics
+      <span>Stats</span><div class="nav-dot"></div>
     </div>
     <div class="nav-item" data-view="settings" onclick="App.nav('settings',this)">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      Settings
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/></svg>
+      <span>Profile</span><div class="nav-dot"></div>
     </div>
   </nav>
 
@@ -699,7 +814,7 @@ var swRegistration = null;
 
 // ─── VAPID PUBLIC KEY ─────────────────────────────────────────────
 // PASTE YOUR PUBLIC KEY FROM vapid-generator.html HERE ↓
-var VAPID_PUBLIC_KEY = 'BCxh3cuz9y5Ii5xpKAQN6Hx6f9KC6-6SozfdrGNqyO20Wru7XSwSON9oC7HasPkObaz6zijHIy5EakZgkztzhSM';
+var VAPID_PUBLIC_KEY = 'BKNAlM4TBEYUVCgovKIS9tM5tNidsJzFNk9S8JP9RnxRSi3-dWxd30UF7ur6oAe1xws5IW8Ag71xQcpkhldueXE';
 
 // ─── SECURITY: XSS SANITIZATION ───────────────────────────────────────────
 const Security = {
@@ -842,11 +957,14 @@ function initSB() {
 }
 
 // ─── STATE ────────────────────────────────────────────────────
+function todayDubai() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Dubai' });
+}
 const S = {
-  today: new Date().toISOString().split('T')[0],
+  today: todayDubai(),
   view: 'today',
   trackerTab: 'books',
-  noteTab: 'combined',
+  noteTab: 'notes',
   // Profile
   profileId: null,
   profile: null,
@@ -863,6 +981,7 @@ const S = {
   notes: [],
   ideas: [],
   links: [],
+  quotes: [],
   sharedGoals: [],
   settings: {},
   moodChart: null,
@@ -872,10 +991,15 @@ const S = {
   _settingPin: false,
   prayerTimings: null,
   goodStreaks: {},
-  viewDate: new Date().toISOString().split('T')[0],
+  viewDate: todayDubai(),
   lockoutInterval: null,
   prayerCountdownInterval: null,
-  prayerTimers: []
+  prayerTimers: [],
+  // Render cache (stale-while-revalidate)
+  _todayCache: null,
+  _todayCacheDate: null,
+  _todayRendered: false,
+  _settingsPage: null
 };
 
 // ─── MUTEX FOR RACE CONDITIONS ─────────────────────────────────
@@ -1118,6 +1242,21 @@ const DB = {
     return sb.from('links').delete().eq('id', id);
   },
 
+  // Quotes (per profile + shared)
+  async getQuotes() {
+    const { data } = await sb.from('quotes').select('*').eq('profile_id', S.profileId).order('created_at', { ascending: false });
+    return data || [];
+  },
+  async addQuote(obj) {
+    return sb.from('quotes').insert({ ...obj, profile_id: S.profileId });
+  },
+  async updateQuote(id, obj) {
+    return sb.from('quotes').update({ ...obj, updated_at: new Date().toISOString() }).eq('id', id).eq('profile_id', S.profileId);
+  },
+  async deleteQuote(id) {
+    return sb.from('quotes').delete().eq('id', id).eq('profile_id', S.profileId);
+  },
+
   // Shared Goals
   async getSharedGoals() {
     const { data } = await sb.from('shared_goals').select('*').eq('is_active', true).order('created_at');
@@ -1231,25 +1370,96 @@ async function renderProfileSelect() {
 }
 
 // ─── RENDER: TODAY ───────────────────────────────────────────
-async function renderToday() {
+var MOOD_EMOJIS = { 1: '😞', 2: '😕', 3: '😐', 4: '😊', 5: '😄' };
+
+function renderDateStrip() {
+  var strip = el('date-strip');
+  if (!strip) return;
+  var DAY_LABELS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var html = '';
+  var todayD = new Date(S.today + 'T00:00:00');
+  for (var i = 6; i >= 0; i--) {
+    var d = new Date(todayD);
+    d.setDate(todayD.getDate() - i);
+    var ds = d.toLocaleDateString('en-CA');
+    var isToday = ds === S.today;
+    var isSel = ds === (S.viewDate || S.today);
+    var done = S._stripDone && S._stripDone[ds];
+    var circleCls = isSel ? 'ds-circle is-sel' : (isToday ? 'ds-circle is-today' : 'ds-circle');
+    html += '<div class="ds-day" onclick="App.selectDay(\'' + ds + '\')">'
+      + '<div class="ds-label">' + DAY_LABELS[d.getDay()] + '</div>'
+      + '<div class="' + circleCls + '">' + d.getDate() + '</div>'
+      + '<div class="ds-dot' + (done ? ' done' : '') + '"></div>'
+      + '</div>';
+  }
+  strip.innerHTML = html;
+}
+
+// Load completion dots for the 7-day strip (best-effort, non-blocking)
+async function loadStripDots() {
+  try {
+    var from = new Date(S.today + 'T00:00:00');
+    from.setDate(from.getDate() - 6);
+    var fromStr = from.toLocaleDateString('en-CA');
+    var res = await sb.from('habit_logs').select('date,completed').eq('profile_id', S.profileId).gte('date', fromStr).eq('completed', true);
+    var byDate = {};
+    (res.data || []).forEach(function(l){ byDate[l.date] = true; });
+    S._stripDone = byDate;
+    renderDateStrip();
+  } catch (e) {}
+}
+
+function renderTodaySkeleton() {
+  var sk = '<div class="skel" style="height:54px;margin:0"></div>';
+  ['islamic-habits','regular-habits','bad-habits'].forEach(function(id){
+    var c = el(id); if (c) c.innerHTML = '<div style="padding:6px"><div class="skel" style="height:48px"></div></div>';
+  });
+}
+
+async function renderToday(opts) {
+  opts = opts || {};
   const viewDate = S.viewDate || S.today;
   const isToday = viewDate === S.today;
-  
+
   el('header-title').textContent = 'Today';
   el('header-sub').textContent = '';
   el('header-actions').innerHTML = '';
   el('fab').classList.add('hidden');
-  
-  // Greeting
-  const greeting = S.profile ? `السلام عليكم ${Security.esc(S.profile.name)}` : 'السلام عليكم';
-  el('greeting').textContent = greeting;
-  
-  // Date display
-  el('date-day').textContent = dayName(viewDate);
-  el('date-full').textContent = fmtDate(viewDate).replace(dayName(viewDate) + ', ', '');
-  el('date-nav').classList.toggle('hidden', isToday && viewDate === S.today);
-  
-  // Load data
+
+  // Greeting + hero name
+  el('greeting').textContent = 'السلام عليكم';
+  el('hero-name').textContent = S.profile ? S.profile.name : '';
+
+  // Past-day banner
+  el('past-banner').classList.toggle('hidden', isToday);
+  if (!isToday) {
+    el('past-banner-text').textContent = 'Viewing ' + dayName(viewDate) + ', ' + fmtDate(viewDate).replace(dayName(viewDate) + ', ', '');
+  }
+
+  renderDateStrip();
+  loadStripDots();
+
+  // ── STALE-WHILE-REVALIDATE: if we have a cache for this date, render instantly ──
+  var haveCache = S._todayCache && S._todayCacheDate === viewDate;
+  if (haveCache && !opts.force) {
+    applyTodayData(S._todayCache, viewDate, isToday);
+    // Quiet background refresh
+    fetchTodayData(viewDate).then(function(data){
+      S._todayCache = data; S._todayCacheDate = viewDate;
+      if (S.view === 'today' && (S.viewDate || S.today) === viewDate) applyTodayData(data, viewDate, isToday);
+    }).catch(function(){});
+    return;
+  }
+
+  // No cache: show skeleton, then fetch
+  if (!opts.silent) renderTodaySkeleton();
+  var data = await fetchTodayData(viewDate);
+  S._todayCache = data; S._todayCacheDate = viewDate;
+  applyTodayData(data, viewDate, isToday);
+}
+
+// Fetch all Today data in parallel (incl. batched slips)
+async function fetchTodayData(viewDate) {
   const [checkin, logs, islamic, regular, bad] = await Promise.all([
     DB.getCheckin(viewDate),
     DB.getHabitLogs(viewDate),
@@ -1257,82 +1467,93 @@ async function renderToday() {
     DB.getHabits('regular'),
     DB.getHabits('bad')
   ]);
-  
-  S.checkin = checkin || { date: viewDate };
+  const goodHabitIds = [...islamic, ...regular].filter(h => h.is_active).map(h => h.id);
+  const goodStreaks = await computeAllGoodStreaks(goodHabitIds);
+
+  // Batched bad-habit slips (single IN query instead of N sequential)
+  var badSlipDates = {}, badStreaks = {};
+  var badIds = bad.filter(h => h.is_active).map(h => h.id);
+  if (badIds.length) {
+    var slipRes = await sb.from('bad_habit_slips').select('habit_id,date').eq('profile_id', S.profileId).in('habit_id', badIds).order('date', { ascending: false });
+    badIds.forEach(function(id){ badSlipDates[id] = []; });
+    (slipRes.data || []).forEach(function(s){ if (badSlipDates[s.habit_id]) badSlipDates[s.habit_id].push(s.date); });
+    badIds.forEach(function(id){ badStreaks[id] = computeBadStreak(badSlipDates[id]); });
+  }
+
+  // Partner mood
+  var partnerMood = null;
+  var partnerShows = !S.partnerProfile || S.partnerProfile.show_mood_to_partner !== false;
+  if (S.partnerProfile && partnerShows) {
+    partnerMood = await DB.getPartnerMood(viewDate);
+  }
+
+  return { checkin: checkin || { date: viewDate }, logs, islamic, regular, bad, goodStreaks, badSlipDates, badStreaks, partnerMood, partnerShows };
+}
+
+// Apply fetched data to the DOM + state
+function applyTodayData(data, viewDate, isToday) {
+  S.checkin = data.checkin;
   S.habitLogs = {};
-  logs.forEach(l => S.habitLogs[l.habit_id] = l.completed);
-  S.habits = { islamic, regular, bad };
-  
+  data.logs.forEach(l => S.habitLogs[l.habit_id] = l.completed);
+  S.habits = { islamic: data.islamic, regular: data.regular, bad: data.bad };
+  S.goodStreaks = data.goodStreaks;
+  S.badSlipDates = data.badSlipDates;
+  S.badStreaks = data.badStreaks;
+
   // Mood
   document.querySelectorAll('.mood-btn').forEach(b => {
     b.classList.toggle('selected', parseInt(b.dataset.mood) === (S.checkin.mood || 0));
   });
-  el('journal-area').value = S.checkin.journal || '';
-  
-  // Partner mood
-  await renderPartnerMood(viewDate);
-  
-  // Prayer times — only load for today (not past days)
-  if (isToday) loadPrayerTimes();
-  
-  // Compute streaks for good habits
-  const goodHabitIds = [...islamic, ...regular].filter(h => h.is_active).map(h => h.id);
-  S.goodStreaks = await computeAllGoodStreaks(goodHabitIds);
-  
-  // Compute bad habit streaks
-  for (const h of bad) {
-    if (h.is_active) {
-      const slips = await DB.getSlipsForHabit(h.id);
-      S.badSlipDates[h.id] = slips.map(s => s.date);
-      S.badStreaks[h.id] = computeBadStreak(S.badSlipDates[h.id]);
-    }
-  }
-  
-  // Render habit lists
-  renderHabitList('islamic-habits', islamic.filter(h => h.is_active), 'islamic');
-  renderHabitList('regular-habits', regular.filter(h => h.is_active), 'regular');
-  renderBadHabitList('bad-habits', bad.filter(h => h.is_active));
-  
+  var ja = el('journal-area');
+  if (document.activeElement !== ja) ja.value = S.checkin.journal || '';
+
+  // Quran inline
+  var pages = S.checkin.quran_pages || 0;
+  S._quranPages = pages;
+  el('qi-num').textContent = pages;
+  var juz = S.checkin.current_juz ? (' · Juz ' + S.checkin.current_juz) : '';
+  el('qi-val').textContent = pages + (pages === 1 ? ' page' : ' pages') + juz;
+
+  // Partner mood pill
+  renderPartnerPill(data.partnerMood, data.partnerShows);
+
+  // Prayer (today only)
+  if (isToday) { el('prayer-strip').style.display = ''; loadPrayerTimes(); }
+  else { el('prayer-strip').style.display = 'none'; }
+
+  // Habit lists
+  renderHabitList('islamic-habits', data.islamic.filter(h => h.is_active), 'islamic', 'islamic-pct');
+  renderHabitList('regular-habits', data.regular.filter(h => h.is_active), 'regular', 'regular-pct');
+  renderBadHabitList('bad-habits', data.bad.filter(h => h.is_active));
+
   updateRing();
+  S._todayRendered = true;
 }
 
-async function renderPartnerMood(date) {
-  const card = el('partner-mood-card');
-  // Default to true if show_mood_to_partner is null/undefined
-  var partnerShowsMood = !S.partnerProfile || S.partnerProfile.show_mood_to_partner !== false;
-  if (!S.partnerProfile || !partnerShowsMood) {
-    card.classList.add('hidden');
-    return;
-  }
-  
-  const partnerMood = await DB.getPartnerMood(date);
-  const moodEmojis = { 1: '😞', 2: '😕', 3: '😐', 4: '😊', 5: '😄' };
-  const moodLabels = { 1: 'feeling down', 2: 'feeling meh', 3: 'feeling okay', 4: 'feeling good', 5: 'feeling great' };
-  
-  card.classList.remove('hidden');
-  el('partner-mood-emoji').textContent = S.partnerProfile.emoji;
-  
-  if (partnerMood && partnerMood.mood) {
-    card.classList.remove('no-mood');
-    el('partner-mood-name').textContent = `${S.partnerProfile.name} is`;
-    el('partner-mood-status').textContent = `${moodEmojis[partnerMood.mood]} ${moodLabels[partnerMood.mood]}`;
-  } else {
-    card.classList.add('no-mood');
-    el('partner-mood-name').textContent = S.partnerProfile.name;
-    el('partner-mood-status').textContent = "Hasn't checked in today";
-  }
+function renderPartnerPill(partnerMood, partnerShows) {
+  var pill = el('hero-partner');
+  if (!S.partnerProfile || !partnerShows) { pill.classList.add('hidden'); return; }
+  pill.classList.remove('hidden');
+  el('hp-emoji').textContent = S.partnerProfile.emoji;
+  el('hp-mood').textContent = (partnerMood && partnerMood.mood) ? MOOD_EMOJIS[partnerMood.mood] : '·';
+  S._partnerMoodVal = partnerMood && partnerMood.mood ? partnerMood.mood : null;
 }
 
-function renderHabitList(containerId, habits, type) {
+function renderHabitList(containerId, habits, type, pctId) {
   var c = el(containerId);
   if (!habits.length) {
-    c.innerHTML = '<div class="empty-state"><p>No ' + type + ' habits yet</p></div>';
+    c.innerHTML = '<div class="empty-state" style="padding:18px"><p>No ' + type + ' habits — add some in Profile</p></div>';
+    if (pctId && el(pctId)) el(pctId).textContent = '';
     return;
   }
+  var doneCount = habits.filter(function(h){ return S.habitLogs[h.id]; }).length;
+  if (pctId && el(pctId)) el(pctId).textContent = doneCount + ' / ' + habits.length;
   c.innerHTML = habits.map(function(h) {
     var done = S.habitLogs[h.id] || false;
     var streak = S.goodStreaks[h.id] || 0;
-    var streakHtml = streak > 0 ? '<div class="habit-streak">🔥 ' + streak + ' day streak</div>' : '';
+    var streakHtml = streak > 0
+      ? '<div class="habit-streak hot">🔥 ' + streak + ' day' + (streak === 1 ? '' : 's') + '</div>'
+      : '<div class="habit-streak">No streak yet</div>';
     var doneCls = done ? ' done' : '';
     var checkCls = done ? ' checked' : '';
     return '<div class="habit-row' + doneCls + '" id="hr-' + h.id + '" onclick="App.toggleHabit(\'' + h.id + '\',\'' + containerId + '\')">'
@@ -1347,7 +1568,7 @@ function renderHabitList(containerId, habits, type) {
 function renderBadHabitList(containerId, habits) {
   var c = el(containerId);
   if (!habits.length) {
-    c.innerHTML = '<div class="empty-state"><p>No bad habits to avoid</p></div>';
+    c.innerHTML = '<div class="empty-state" style="padding:18px"><p>Nothing to avoid yet</p></div>';
     return;
   }
   var viewDate = S.viewDate || S.today;
@@ -1356,13 +1577,14 @@ function renderBadHabitList(containerId, habits) {
     var streak = S.badStreaks[h.id] || 0;
     var slippedCls = slipped ? ' slipped' : '';
     var checkCls = slipped ? ' checked' : '';
-    var streakLabel = slipped ? '❌ Slipped today' : ('✅ ' + streak + ' days clean');
-    return '<div class="habit-row bad-habit-row' + slippedCls + '" id="hr-' + h.id + '">'
-      + '<div class="habit-check' + checkCls + '" onclick="App.logSlip(\'' + h.id + '\')">' + svgCheck() + '</div>'
-      + '<div class="habit-info">'
-      + '<div class="habit-name">' + Security.esc(h.name) + '</div>'
-      + '<div class="habit-streak">' + streakLabel + '</div>'
-      + '</div></div>';
+    var streakLabel = slipped
+      ? '<span class="bad-streak slipped">Slipped today</span>'
+      : '<span class="bad-streak">✅ ' + streak + ' days clean</span>';
+    return '<div class="habit-row bad-habit-row' + slippedCls + '" id="hr-' + h.id + '" onclick="App.logSlip(\'' + h.id + '\')">'
+      + '<div class="habit-check' + checkCls + '">' + svgCheck() + '</div>'
+      + '<div class="habit-info"><div class="habit-name">' + Security.esc(h.name) + '</div></div>'
+      + streakLabel
+      + '</div>';
   }).join('');
 }
 
@@ -1371,17 +1593,16 @@ function updateRing() {
   const done = all.filter(h => S.habitLogs[h.id]).length;
   const total = all.length;
   const pct = total ? Math.round(100 * done / total) : 0;
-  const circ = 150.8;
+  const circ = 100.5;
   const offset = circ - (circ * pct / 100);
-  el('ring-prog').style.strokeDashoffset = offset;
-  el('ring-pct').textContent = pct + '%';
-  el('ring-count').textContent = `${done} / ${total}`;
+  if (el('ring-prog')) el('ring-prog').style.strokeDashoffset = offset;
+  if (el('ring-pct')) el('ring-pct').textContent = pct + '%';
 }
 
 // ─── RENDER: TRACKERS ─────────────────────────────────────────
 async function renderTrackers() {
-  el('header-title').textContent = 'Trackers';
-  el('header-sub').textContent = 'Books, Quran & Goals';
+  el('header-title').textContent = 'Reading';
+  el('header-sub').textContent = '';
   el('header-actions').innerHTML = '';
   el('fab').classList.remove('hidden');
   el('fab').dataset.action = 'add-book';
@@ -1476,9 +1697,9 @@ async function renderQuran() {
     </div>
     <div class="card">
       <div class="card-title">📝 Update Today</div>
-      <div class="field"><label>Pages Read Today</label><input type="number" id="q-pages" value="${pages}" min="0"></div>
+      <div class="field"><label>Pages Read Today</label><input type="number" inputmode="numeric" id="q-pages" value="${pages}" min="0"></div>
       <div class="field"><label>Current Surah</label><input type="text" id="q-surah" value="${Security.escapeAttr((q && q.current_surah) || '')}" placeholder="Al-Baqarah"></div>
-      <div class="field"><label>Current Juz</label><input type="number" id="q-juz" value="${(q && q.current_juz) || ''}" min="1" max="30" placeholder="1-30"></div>
+      <div class="field"><label>Current Juz</label><input type="number" inputmode="numeric" id="q-juz" value="${(q && q.current_juz) || ''}" min="1" max="30" placeholder="1-30"></div>
       <button class="btn btn-primary btn-sm" onclick="App.saveQuran()">Save</button>
     </div>
   `;
@@ -1541,32 +1762,29 @@ async function renderSharedGoals() {
 
 // ─── RENDER: NOTES ────────────────────────────────────────────
 async function renderNotes() {
-  el('header-title').textContent = 'Notes & Ideas';
+  el('header-title').textContent = 'Notes';
   el('header-sub').textContent = '';
   el('header-actions').innerHTML = '';
-
-  if (S.noteTab === 'ideas') {
-    el('fab').classList.remove('hidden');
-    el('fab').dataset.action = 'add-idea';
-    el('nl-combined-view').classList.add('hidden');
-    el('nl-ideas-view').classList.remove('hidden');
-    await renderIdeasList();
-  } else {
-    // combined: notes + links side by side — FAB hidden (inline + buttons used)
-    el('fab').classList.add('hidden');
-    el('nl-combined-view').classList.remove('hidden');
-    el('nl-ideas-view').classList.add('hidden');
-    await renderCombinedView();
-  }
+  el('fab').classList.remove('hidden');
+  applyNoteTab();
+  // Fetch fresh data for the active tab
+  if (S.noteTab === 'ideas') await renderIdeasList();
+  else if (S.noteTab === 'links') await renderLinksList();
+  else await renderNotesList();
 }
 
-// Fetch notes + links in parallel, paint both panels
-async function renderCombinedView() {
-  const [notes, links] = await Promise.all([DB.getNotes(), DB.getLinks()]);
+function applyNoteTab() {
+  el('nl-notes-view').classList.toggle('hidden', S.noteTab !== 'notes');
+  el('nl-links-view').classList.toggle('hidden', S.noteTab !== 'links');
+  el('nl-ideas-view').classList.toggle('hidden', S.noteTab !== 'ideas');
+  var fab = el('fab');
+  fab.dataset.action = S.noteTab === 'links' ? 'add-link' : (S.noteTab === 'ideas' ? 'add-idea' : 'add-note');
+}
+
+async function renderNotesList() {
+  var notes = await DB.getNotes();
   S.notes = notes;
-  S.links = links;
   paintNotesPanel(notes);
-  paintLinksPanel(links);
 }
 
 function paintNotesPanel(notes) {
@@ -1575,16 +1793,56 @@ function paintNotesPanel(notes) {
   var mine = notes.filter(function(n){ return n.profile_id === S.profileId; });
   var partner = notes.filter(function(n){ return n.profile_id !== S.profileId && n.is_shared; });
   if (!mine.length && !partner.length) {
-    c.innerHTML = '<div class="nl-empty">No notes yet.<br>Tap <strong>+</strong> to add one.</div>';
+    c.innerHTML = '<div class="nl-empty">No notes yet.<br>Tap the <strong>+</strong> button to add one.</div>';
     return;
   }
   var html = '';
   if (mine.length) html += mine.map(function(n){ return noteItemHTML(n, false); }).join('');
-  if (partner.length) {
-    html += '<div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-l);padding:8px 14px 4px;background:var(--surface2)">💕 Partner</div>';
-    html += partner.map(function(n){ return noteItemHTML(n, true); }).join('');
-  }
+  if (partner.length) html += partner.map(function(n){ return noteItemHTML(n, true); }).join('');
   c.innerHTML = html;
+}
+
+function noteItemHTML(n, isPartner) {
+  var completedCls = n.completed ? ' completed' : '';
+  var checkCls = n.completed ? ' done' : '';
+  var partnerCls = isPartner ? ' partner-note' : '';
+  var titleDir = detectDir(n.title || '');
+  var contentDir = detectDir(n.content || '');
+  var partnerLabel = isPartner ? '<div class="note-partner-label">' + (S.partnerProfile ? S.partnerProfile.emoji + ' From ' + Security.esc(S.partnerProfile.name) : 'Shared') + '</div>' : '';
+  var titleHtml = n.title ? '<div class="note-title" dir="' + titleDir + '">' + Security.esc(n.title) + '</div>' : '';
+  var contentHtml = n.content ? '<div class="note-content" dir="' + contentDir + '">' + Security.esc(n.content) + '</div>' : '';
+
+  var tags = '';
+  if (n.is_reminder && n.reminder_date) tags += '<span class="ntag ntag-reminder">⏰ ' + fmtTs(n.reminder_date) + '</span>';
+  else tags += '<span class="nc-date" style="font-size:.7rem;color:var(--text-l)">' + fmtTs(n.created_at) + '</span>';
+  if (n.is_shared && !isPartner) tags += '<span class="ntag ntag-shared">💕 Shared</span>';
+
+  var isOwn = n.profile_id === S.profileId;
+  var actions = '';
+  if (isOwn) {
+    actions = '<div class="note-actions">'
+      + '<div class="note-act-btn" onclick="event.stopPropagation();App.editNoteModal(\'' + n.id + '\')">✏️</div>'
+      + '<div class="note-act-btn" onclick="event.stopPropagation();App.deleteNote(\'' + n.id + '\')">🗑</div>'
+      + '</div>';
+  }
+  var checkEl = isOwn
+    ? '<div class="note-check' + checkCls + '" onclick="event.stopPropagation();App.toggleNote(\'' + n.id + '\',' + !!n.completed + ')"></div>'
+    : '<div class="note-check" style="opacity:.3"></div>';
+
+  return '<div class="note-item' + completedCls + partnerCls + '">'
+    + checkEl
+    + '<div class="note-body">'
+    + partnerLabel + titleHtml + contentHtml
+    + '<div class="note-meta">' + tags + '</div>'
+    + '</div>'
+    + actions
+    + '</div>';
+}
+
+async function renderLinksList() {
+  var links = await DB.getLinks();
+  S.links = links;
+  paintLinksPanel(links);
 }
 
 function paintLinksPanel(links) {
@@ -1593,60 +1851,28 @@ function paintLinksPanel(links) {
   var mine = links.filter(function(l){ return l.profile_id === S.profileId; });
   var partner = links.filter(function(l){ return l.profile_id !== S.profileId && l.is_shared; });
   if (!mine.length && !partner.length) {
-    c.innerHTML = '<div class="nl-empty">No links saved.<br>Tap <strong>+</strong> to save one.</div>';
+    c.innerHTML = '<div class="nl-empty">No links saved.<br>Tap the <strong>+</strong> button to save one.</div>';
     return;
   }
   var html = '';
   if (mine.length) html += mine.map(function(l){ return linkItemHTML(l, false); }).join('');
-  if (partner.length) {
-    html += '<div style="font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-l);padding:8px 14px 4px;background:var(--surface2)">💕 Partner</div>';
-    html += partner.map(function(l){ return linkItemHTML(l, true); }).join('');
-  }
+  if (partner.length) html += partner.map(function(l){ return linkItemHTML(l, true); }).join('');
   c.innerHTML = html;
 }
 
-async function renderNotesList() {
-  // Refresh only the notes panel (used after add/delete/toggle)
-  var notes = await DB.getNotes();
-  S.notes = notes;
-  paintNotesPanel(notes);
-}
-
-function noteItemHTML(n, showOwner) {
-  if (showOwner === undefined) showOwner = false;
-  var _p = S.profiles.find(function(p){ return p.id === n.profile_id; });
-  var ownerEmoji = _p ? _p.emoji : '';
-  var completedCls = n.completed ? ' completed' : '';
-  var checkCls = n.completed ? ' done' : '';
-  var timePart = (n.is_reminder && n.reminder_date) ? ('⏰ ' + fmtTs(n.reminder_date)) : fmtTs(n.created_at);
-  var ownerPart = showOwner ? ('<span>' + ownerEmoji + '</span>') : '';
-  var sharedBadge = n.is_shared ? '<span class="shared-badge">Shared</span>' : '';
-  // Auto-detect RTL for title and content independently
-  var titleDir = detectDir(n.title || '');
-  var contentDir = detectDir(n.content || '');
-  // Title — only rendered if present
-  var titleHtml = n.title
-    ? '<div class="note-title" dir="' + titleDir + '">' + Security.esc(n.title) + '</div>'
-    : '';
-  // Content — white-space:pre-wrap (set in CSS) preserves every line break
-  var contentHtml = n.content
-    ? '<div class="note-content" dir="' + contentDir + '">' + Security.esc(n.content) + '</div>'
-    : '';
-  // Edit + delete only on own notes
-  var isOwn = n.profile_id === S.profileId;
-  var editBtn = isOwn
-    ? '<button class="btn btn-sm" style="color:var(--text-l)" onclick="App.editNoteModal(\'' + n.id + '\')" title="Edit">✏️</button>'
-    : '';
-  var delBtn = isOwn
-    ? '<button class="btn btn-sm" style="color:var(--danger)" onclick="App.deleteNote(\'' + n.id + '\')" title="Delete">🗑</button>'
-    : '';
-  return '<div class="note-item' + completedCls + '">'
-    + '<div class="note-check' + checkCls + '" onclick="App.toggleNote(\'' + n.id + '\',' + n.completed + ')">' + svgCheck() + '</div>'
-    + '<div class="note-body">'
-    + titleHtml + contentHtml
-    + '<div class="note-meta">' + ownerPart + '<span>' + timePart + '</span>' + sharedBadge + '</div>'
+function linkItemHTML(l, isPartner) {
+  var notesHtml = l.notes ? '<div class="link-notes">' + Security.esc(l.notes) + '</div>' : '';
+  var sharedBadge = (l.is_shared && !isPartner) ? '<span class="shared-badge" style="margin-top:4px;display:inline-flex">Shared</span>' : '';
+  var partnerBadge = isPartner ? '<div class="note-partner-label">' + (S.partnerProfile ? S.partnerProfile.emoji + ' Shared' : 'Shared') + '</div>' : '';
+  var delBtn = !isPartner ? '<div class="note-act-btn" onclick="event.stopPropagation();App.deleteLink(\'' + l.id + '\')">🗑</div>' : '';
+  return '<div class="link-card">'
+    + '<div style="flex:1;min-width:0">'
+    + partnerBadge
+    + '<a href="' + Security.sanitizeUrl(l.url) + '" target="_blank" rel="noopener noreferrer" class="link-title">' + Security.esc(l.title || l.url) + '</a>'
+    + '<div class="link-url">' + Security.esc(l.url) + '</div>'
+    + notesHtml + sharedBadge
     + '</div>'
-    + '<div class="note-actions">' + editBtn + delBtn + '</div>'
+    + delBtn
     + '</div>';
 }
 
@@ -1654,53 +1880,65 @@ async function renderIdeasList() {
   const ideas = await DB.getIdeas();
   S.ideas = ideas;
   const c = el('notes-content');
-  
   if (!ideas.length) {
-    c.innerHTML = '<div class="empty-state" style="margin-top:24px"><p>No ideas yet. Tap + to capture.</p></div>';
+    c.innerHTML = '<div class="nl-empty">No ideas yet.<br>Tap the <strong>+</strong> button to capture one.</div>';
     return;
   }
-  
-  var ideaRows = ideas.map(function(i) {
+  c.innerHTML = ideas.map(function(i) {
+    var dir = detectDir(i.content || '');
     return '<div class="idea-card">'
+      + '<div style="flex:1;min-width:0">'
       + '<div class="idea-cat">' + Security.esc(i.category || 'general') + '</div>'
-      + '<div style="display:flex;justify-content:space-between;align-items:flex-start">'
-      + '<div class="idea-text">' + Security.esc(i.content) + '</div>'
-      + '<button class="btn btn-sm" style="color:var(--danger);margin-left:8px" onclick="App.deleteIdea(\'' + i.id + '\')">🗑</button>'
-      + '</div></div>';
+      + '<div class="idea-text" dir="' + dir + '">' + Security.esc(i.content) + '</div>'
+      + '</div>'
+      + '<div class="note-act-btn" onclick="App.deleteIdea(\'' + i.id + '\')">🗑</div>'
+      + '</div>';
   }).join('');
-  c.innerHTML = '<div class="habit-list" style="margin:12px 16px">' + ideaRows + '</div>';
 }
 
-async function renderLinksList() {
-  // Refresh only the links panel (used after add/delete)
-  var links = await DB.getLinks();
-  S.links = links;
-  paintLinksPanel(links);
+// ─── RENDER: QUOTES ───────────────────────────────────────────
+function quoteModeLabel(q) {
+  if (q.delivery_mode === 'daily_time') return { cls: 'qmode-pill timed', txt: '🕐 Daily ' + (q.delivery_time || '') };
+  if (q.delivery_mode === 'scheduled_once') return { cls: 'qmode-pill once', txt: '📌 Once' + (q.delivery_time ? ' at ' + q.delivery_time : '') };
+  if (q.delivery_mode === 'random_repeat') return { cls: 'qmode-pill', txt: '🎲 Random (repeats)' };
+  return { cls: 'qmode-pill', txt: '🎲 Random (once)' };
 }
 
-function linkItemHTML(l, showOwner) {
-  if (showOwner === undefined) showOwner = false;
-  var _p = S.profiles.find(function(p){ return p.id === l.profile_id; });
-  var ownerEmoji = _p ? _p.emoji : '';
-  var notesHtml = l.notes ? '<div class="link-notes">' + Security.esc(l.notes) + '</div>' : '';
-  var ownerPart = showOwner ? (ownerEmoji + ' · ') : '';
-  var sharedBadge = l.is_shared ? '<span class="shared-badge">Shared</span>' : '';
-  return '<div class="link-card">'
-    + '<div style="display:flex;justify-content:space-between;align-items:flex-start">'
-    + '<div style="flex:1;min-width:0">'
-    + '<a href="' + Security.sanitizeUrl(l.url) + '" target="_blank" rel="noopener noreferrer" class="link-title">' + Security.esc(l.title || l.url) + '</a>'
-    + '<div class="link-url">' + Security.esc(l.url) + '</div>'
-    + notesHtml
-    + '<div style="font-size:.7rem;color:var(--text-l);margin-top:4px">' + ownerPart + sharedBadge + '</div>'
-    + '</div>'
-    + '<button class="btn btn-sm" style="color:var(--danger)" onclick="App.deleteLink(\'' + l.id + '\')">🗑</button>'
-    + '</div></div>';
+async function renderQuotesList() {
+  var quotes = await DB.getQuotes();
+  S.quotes = quotes;
+  var c = el('quotes-list');
+  if (!c) return;
+  if (!quotes.length) {
+    c.innerHTML = '<div class="nl-empty">No quotes yet.<br>Add one to start receiving motivation.</div>';
+    return;
+  }
+  c.innerHTML = quotes.map(function(q) {
+    var dir = detectDir(q.text || '');
+    var mode = quoteModeLabel(q);
+    var authorHtml = q.author ? '<div class="quote-author">— ' + Security.esc(q.author) + '</div>' : '';
+    var sentHtml = q.send_count ? '<span class="nc-date" style="font-size:.68rem;color:var(--text-l)">sent ' + q.send_count + '×</span>' : '';
+    var sharedBadge = q.is_shared ? '<span class="ntag ntag-shared">💕 Shared</span>' : '';
+    var activeCls = q.is_active === false ? ' style="opacity:.5"' : '';
+    return '<div class="quote-card"' + activeCls + '>'
+      + '<div class="quote-text" dir="' + dir + '">' + Security.esc(q.text) + '</div>'
+      + authorHtml
+      + '<div class="quote-meta">'
+      + '<span class="' + mode.cls + '">' + mode.txt + '</span>'
+      + sharedBadge + sentHtml
+      + '<div class="quote-actions">'
+      + '<div class="note-act-btn" onclick="App.editQuoteModal(\'' + q.id + '\')">✏️</div>'
+      + '<div class="note-act-btn" onclick="App.deleteQuote(\'' + q.id + '\')">🗑</div>'
+      + '</div>'
+      + '</div>'
+      + '</div>';
+  }).join('');
 }
 
 // ─── RENDER: ANALYTICS ────────────────────────────────────────
 async function renderAnalytics() {
-  el('header-title').textContent = 'Analytics';
-  el('header-sub').textContent = 'Your Progress';
+  el('header-title').textContent = 'Stats';
+  el('header-sub').textContent = '';
   el('header-actions').innerHTML = '';
   el('fab').classList.add('hidden');
   await renderAnalyticsStats();
@@ -1713,55 +1951,42 @@ async function renderAnalyticsStats() {
     DB.getLast30HabitStats()
   ]);
   
-  // Calculate stats
   const moods = moodData.filter(d => d.mood).map(d => d.mood);
-  const avgMood = moods.length ? (moods.reduce((a, b) => a + b, 0) / moods.length).toFixed(1) : '—';
+  const avgMoodNum = moods.length ? Math.round(moods.reduce((a, b) => a + b, 0) / moods.length) : 0;
+  const avgMood = avgMoodNum ? MOOD_EMOJIS[avgMoodNum] : '—';
   const completions = compData.filter(d => d.completed).length;
   const totalLogs = compData.length;
   const compRate = totalLogs ? Math.round(100 * completions / totalLogs) : 0;
-  
+  var bestStreak = 0;
+  Object.values(S.goodStreaks || {}).forEach(function(s){ if (s > bestStreak) bestStreak = s; });
+
   let html = `
-    <div class="card">
-      <div class="card-title">📊 Last 14 Days</div>
+    <div style="padding:12px 14px 0">
       <div class="stats-grid">
-        <div class="stat-card">
-          <div class="stat-val">${avgMood}</div>
-          <div class="stat-lab">Avg Mood</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-val">${compRate}%</div>
-          <div class="stat-lab">Completion</div>
-        </div>
+        <div class="stat-card"><div class="stat-val">${compRate}%</div><div class="stat-lab">30-day rate</div></div>
+        <div class="stat-card"><div class="stat-val">${avgMood}</div><div class="stat-lab">Avg mood (14d)</div></div>
+      </div>
+      <div class="stats-grid" style="margin-top:12px">
+        <div class="stat-card"><div class="stat-val">${bestStreak}</div><div class="stat-lab">Best streak</div></div>
+        <div class="stat-card"><div class="stat-val">${moods.length}</div><div class="stat-lab">Days logged</div></div>
       </div>
     </div>
-    <div class="card">
-      <div class="card-title">🏆 Habit Completion (30 Days)</div>
+    <div class="card"><div class="card-title">🏆 Habit completion (30 days)</div>
   `;
-  
   if (habitStats.length) {
     habitStats.forEach(h => {
-      html += `
-        <div class="habit-bar">
-          <div class="habit-bar-name" title="${Security.escapeAttr(h.name)}">${Security.esc(h.name)}</div>
-          <div class="habit-bar-track"><div class="habit-bar-fill" style="width:${h.pct}%"></div></div>
-          <div class="habit-bar-stats">
-            <span class="habit-bar-days">${h.done}/${h.total}</span>
-            <span class="habit-bar-pct">${h.pct}%</span>
-          </div>
-        </div>
-      `;
+      html += `<div class="habit-bar"><div class="habit-bar-name" title="${Security.escapeAttr(h.name)}">${Security.esc(h.name)}</div><div class="habit-bar-track"><div class="habit-bar-fill" style="width:${h.pct}%"></div></div><div class="habit-bar-stats"><span class="habit-bar-days">${h.done}/${h.total}</span><span class="habit-bar-pct">${h.pct}%</span></div></div>`;
     });
   } else {
     html += '<div class="empty-state"><p>No habit data yet</p></div>';
   }
-  
   html += '</div>';
   el('analytics-stats-panel').innerHTML = html;
 }
 
 // ─── RENDER: SETTINGS ─────────────────────────────────────────
 async function renderSettings() {
-  el('header-title').textContent = 'Settings';
+  el('header-title').textContent = 'Profile';
   el('header-sub').textContent = '';
   el('header-actions').innerHTML = '';
   el('fab').classList.add('hidden');
@@ -1773,11 +1998,23 @@ async function renderSettings() {
   // Show mood toggle
   el('show-mood-toggle').checked = S.profile.show_mood_to_partner !== false;
   
+  // Reset to main menu view (close any open sub-page)
+  closeSettingsPageDOM();
+  
   // Notification status
   renderNotifStatus();
   
-  // Habits manager
+  // Habits manager (pre-render so sub-page is instant)
   await renderHabitsManager();
+}
+
+// Toggle settings sub-pages without re-rendering everything
+function closeSettingsPageDOM() {
+  S._settingsPage = null;
+  ['settings-habits','settings-quotes','settings-notifications','settings-pin'].forEach(function(id){
+    var e = el(id); if (e) e.classList.add('hidden');
+  });
+  var menu = el('settings-menu'); if (menu) menu.classList.remove('hidden');
 }
 
 async function renderHabitsManager() {
@@ -1866,11 +2103,16 @@ function renderPrayerCard(timings) {
   for (let i = 0; i < times.length; i++) { if (times[i].dt > now) { nextIdx = i; break; } }
   const g = el('prayer-grid');
   if (!g) return;
+  S._prayerNextIdx = nextIdx;
   g.innerHTML = times.map((p, i) => {
     const isNext = i === nextIdx;
     const passed = nextIdx === -1 ? true : i < nextIdx;
     const fmt = p.dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-    return `<div class="prayer-item${isNext ? ' next' : ''}${passed ? ' passed' : ''}"><div class="prayer-name">${p.name}</div><div class="prayer-time">${fmt}</div></div>`;
+    var cd = isNext ? '<div class="prayer-cd" id="prayer-cd"></div>' : '<div class="prayer-cd">&nbsp;</div>';
+    return '<div class="prayer-item' + (isNext ? ' next' : '') + (passed ? ' passed' : '') + '">'
+      + '<div class="prayer-name">' + p.name + '</div>'
+      + '<div class="prayer-time">' + fmt + '</div>'
+      + cd + '</div>';
   }).join('');
 }
 
@@ -1881,7 +2123,7 @@ function startPrayerCountdown(timings) {
   }
   
   function tick() {
-    const cd = el('prayer-countdown');
+    var cd = el('prayer-cd');
     if (!cd || S.view !== 'today') {
       clearInterval(S.prayerCountdownInterval);
       S.prayerCountdownInterval = null;
@@ -1891,10 +2133,10 @@ function startPrayerCountdown(timings) {
     const times = PRAYERS.map(p => ({ name: p, dt: parsePrayerTime(timings[p], S.today) }));
     let next = null;
     for (let i = 0; i < times.length; i++) { if (times[i].dt > now) { next = times[i]; break; } }
-    if (!next) { cd.textContent = '· All done ✓'; return; }
+    if (!next) { cd.textContent = 'done ✓'; return; }
     const diff = Math.floor((next.dt - now) / 1000);
     const h = Math.floor(diff / 3600), m = Math.floor((diff % 3600) / 60), s = diff % 60;
-    cd.textContent = '· ' + next.name + ' in ' + (h > 0 ? h + 'h ' : '') + m + 'm ' + s + 's';
+    cd.textContent = 'in ' + (h > 0 ? h + 'h ' : '') + m + 'm' + (h > 0 ? '' : ' ' + s + 's');
     if (s === 0) renderPrayerCard(timings);
   }
   tick();
@@ -2139,17 +2381,68 @@ const App = {
   },
   
   // Navigation
-  stepDay(delta) {
-    const d = new Date((S.viewDate || S.today) + 'T00:00:00');
-    d.setDate(d.getDate() + delta);
-    const nd = d.toISOString().split('T')[0];
-    if (nd > S.today) return;
-    S.viewDate = nd;
-    renderToday();
+  selectDay(ds) {
+    if (ds > S.today) return;
+    S.viewDate = ds;
+    renderToday({ force: true });
   },
   goToday() {
     S.viewDate = S.today;
-    renderToday();
+    renderToday({ force: true });
+  },
+  stepDay(delta) {
+    const d = new Date((S.viewDate || S.today) + 'T00:00:00');
+    d.setDate(d.getDate() + delta);
+    const nd = d.toLocaleDateString('en-CA');
+    if (nd > S.today) return;
+    S.viewDate = nd;
+    renderToday({ force: true });
+  },
+  
+  async quranStep(delta) {
+    var cur = S._quranPages || 0;
+    var next = Math.max(0, cur + delta);
+    S._quranPages = next;
+    el('qi-num').textContent = next;
+    var juz = (S.checkin && S.checkin.current_juz) ? (' · Juz ' + S.checkin.current_juz) : '';
+    el('qi-val').textContent = next + (next === 1 ? ' page' : ' pages') + juz;
+    // Optimistic state + cache update
+    if (S.checkin) S.checkin.quran_pages = next;
+    if (S._todayCache && S._todayCache.checkin) S._todayCache.checkin.quran_pages = next;
+    // Debounced save
+    if (this._quranTimer) clearTimeout(this._quranTimer);
+    this._quranTimer = setTimeout(async function(){
+      try {
+        await DB.upsertCheckin(S.viewDate || S.today, { quran_pages: next });
+      } catch (e) { toast('Could not save'); }
+    }, 600);
+  },
+  
+  showPartnerMood() {
+    if (!S.partnerProfile) return;
+    var labels = { 1: 'feeling down', 2: 'feeling meh', 3: 'feeling okay', 4: 'feeling good', 5: 'feeling great' };
+    if (S._partnerMoodVal) {
+      toast(S.partnerProfile.emoji + ' ' + S.partnerProfile.name + ' is ' + labels[S._partnerMoodVal]);
+    } else {
+      toast(S.partnerProfile.name + " hasn't checked in yet today");
+    }
+  },
+  
+  // Settings sub-pages
+  openSettingsPage(page) {
+    S._settingsPage = page;
+    el('settings-menu').classList.add('hidden');
+    ['habits','quotes','notifications','pin'].forEach(function(p){
+      var e = el('settings-' + p); if (e) e.classList.toggle('hidden', p !== page);
+    });
+    el('main-content').scrollTop = 0;
+    if (page === 'quotes') renderQuotesList();
+    else if (page === 'habits') renderHabitsManager();
+    else if (page === 'notifications') renderNotifStatus();
+  },
+  closeSettingsPage() {
+    closeSettingsPageDOM();
+    el('main-content').scrollTop = 0;
   },
   
   _cleanupIntervals() {
@@ -2162,9 +2455,11 @@ const App = {
   nav(view, el_) {
     if (S.view === 'today' && view !== 'today') this._cleanupIntervals();
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    el_.classList.add('active');
+    if (el_) el_.classList.add('active');
+    else { var nav_ = document.querySelector('.nav-item[data-view=' + view + ']'); if (nav_) nav_.classList.add('active'); }
     document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
     el('view-' + view).classList.add('active');
+    el('main-content').scrollTop = 0;
     S.view = view;
     if (view === 'today') renderToday();
     else if (view === 'trackers') renderTrackers();
@@ -2195,8 +2490,8 @@ const App = {
   },
   
   switchTracker(tab, el_) {
-    document.querySelectorAll('.tracker-tab').forEach(t => t.classList.remove('active'));
-    el_.classList.add('active');
+    document.querySelectorAll('#view-trackers .tracker-tab').forEach(t => t.classList.remove('active'));
+    if (el_) el_.classList.add('active');
     el('tracker-books').classList.toggle('hidden', tab !== 'books');
     el('tracker-quran').classList.toggle('hidden', tab !== 'quran');
     el('tracker-goals').classList.toggle('hidden', tab !== 'goals');
@@ -2209,20 +2504,12 @@ const App = {
   
   switchNoteTab(tab, el_) {
     document.querySelectorAll('.notes-tab').forEach(t => t.classList.remove('active'));
-    el_.classList.add('active');
+    if (el_) el_.classList.add('active');
     S.noteTab = tab;
-    if (tab === 'ideas') {
-      el('fab').classList.remove('hidden');
-      el('fab').dataset.action = 'add-idea';
-      el('nl-combined-view').classList.add('hidden');
-      el('nl-ideas-view').classList.remove('hidden');
-      renderIdeasList();
-    } else {
-      el('fab').classList.add('hidden');
-      el('nl-combined-view').classList.remove('hidden');
-      el('nl-ideas-view').classList.add('hidden');
-      renderCombinedView();
-    }
+    applyNoteTab();
+    if (tab === 'ideas') renderIdeasList();
+    else if (tab === 'links') renderLinksList();
+    else renderNotesList();
   },
   
   fabAction() {
@@ -2337,6 +2624,8 @@ const App = {
     if (S.viewDate && S.viewDate !== S.today) return;
     document.querySelectorAll('.mood-btn').forEach(b => b.classList.toggle('selected', parseInt(b.dataset.mood) === m));
     el('journal-save-status').textContent = 'Saving...';
+    if (S.checkin) S.checkin.mood = m;
+    if (S._todayCache && S._todayCache.checkin) S._todayCache.checkin.mood = m;
     await DB.upsertCheckin(S.viewDate || S.today, { mood: m });
     el('journal-save-status').textContent = 'Saved ✓';
     setTimeout(() => el('journal-save-status').textContent = '', 1800);
@@ -2353,6 +2642,19 @@ const App = {
       const chk = row.querySelector('.habit-check');
       chk.classList.toggle('checked', next);
     }
+    // Sync cache
+    if (S._todayCache && S._todayCacheDate === (S.viewDate || S.today)) {
+      var found = S._todayCache.logs.find(function(l){ return l.habit_id === habitId; });
+      if (found) found.completed = next;
+      else S._todayCache.logs.push({ habit_id: habitId, completed: next });
+    }
+    // Update group counters
+    var grp = (S.habits.islamic || []).some(function(h){ return h.id === habitId; }) ? 'islamic' : ((S.habits.regular || []).some(function(h){ return h.id === habitId; }) ? 'regular' : null);
+    if (grp) {
+      var list = S.habits[grp].filter(function(h){ return h.is_active; });
+      var done = list.filter(function(h){ return S.habitLogs[h.id]; }).length;
+      if (el(grp + '-pct')) el(grp + '-pct').textContent = done + ' / ' + list.length;
+    }
     updateRing();
     await DB.upsertHabitLog(habitId, S.viewDate || S.today, next);
   },
@@ -2361,8 +2663,9 @@ const App = {
     const confirmed = await App.confirm('Log a slip for today? This resets the streak.');
     if (!confirmed) return;
     await DB.logSlip(habitId, S.viewDate || S.today);
-    await renderToday();
-    toast('Slip logged — stay strong!');
+    S._todayCache = null;  // invalidate; streaks recompute
+    await renderToday({ force: true });
+    toast('Slip logged — stay strong 💪');
   },
   
   // Books
@@ -2370,8 +2673,8 @@ const App = {
     openModal('Add Book', `
       <div class="field"><label>Title</label><input id="m-title" placeholder="Book title" type="text"></div>
       <div class="field"><label>Author</label><input id="m-author" placeholder="Author name" type="text"></div>
-      <div class="field"><label>Total Pages</label><input id="m-totalpages" type="number" placeholder="300" min="1"></div>
-      <div class="field"><label>Current Page</label><input id="m-curpage" type="number" placeholder="0" min="0"></div>
+      <div class="field"><label>Total Pages</label><input id="m-totalpages" type="number" inputmode="numeric" placeholder="300" min="1"></div>
+      <div class="field"><label>Current Page</label><input id="m-curpage" type="number" inputmode="numeric" placeholder="0" min="0"></div>
     `, [
       { label: 'Cancel', cls: 'btn-secondary', fn: 'App.closeModal()' },
       { label: 'Add Book', cls: 'btn-primary', fn: 'App.saveNewBook()' }
@@ -2396,8 +2699,8 @@ const App = {
     const b = S.books.find(x => x.id === id);
     if (!b) return;
     openModal('Update Book', `
-      <div class="field"><label>Current Page</label><input id="m-cp" type="number" value="${b.current_page}" min="0" max="${b.total_pages}"></div>
-      <div class="field"><label>Total Pages</label><input id="m-tp" type="number" value="${b.total_pages}" min="1"></div>
+      <div class="field"><label>Current Page</label><input id="m-cp" type="number" inputmode="numeric" value="${b.current_page}" min="0" max="${b.total_pages}"></div>
+      <div class="field"><label>Total Pages</label><input id="m-tp" type="number" inputmode="numeric" value="${b.total_pages}" min="1"></div>
       <div class="field"><label>Notes</label><textarea id="m-notes" rows="3" placeholder="Personal notes...">${Security.esc(b.personal_notes || '')}</textarea></div>
     `, [
       { label: 'Cancel', cls: 'btn-secondary', fn: 'App.closeModal()' },
@@ -2419,7 +2722,7 @@ const App = {
   
   logReading(id) {
     openModal('Log Reading Session', `
-      <div class="field"><label>Pages Read Today</label><input id="m-pr" type="number" placeholder="0" min="0"></div>
+      <div class="field"><label>Pages Read Today</label><input id="m-pr" type="number" inputmode="numeric" placeholder="0" min="0"></div>
     `, [
       { label: 'Cancel', cls: 'btn-secondary', fn: 'App.closeModal()' },
       { label: 'Log', cls: 'btn-primary', fn: `App.saveReadingLog('${id}')` }
@@ -2484,7 +2787,7 @@ const App = {
   async editWirdTarget() {
     const cur = await DB.getSetting('wird_target') || '100';
     openModal('Daily Wird Target', `
-      <div class="field"><label>Wird Target (count)</label><input id="m-wird" type="number" value="${cur}" min="1"></div>
+      <div class="field"><label>Wird Target (count)</label><input id="m-wird" type="number" inputmode="numeric" value="${cur}" min="1"></div>
     `, [
       { label: 'Cancel', cls: 'btn-secondary', fn: 'App.closeModal()' },
       { label: 'Save', cls: 'btn-primary', fn: 'App.saveWirdTarget()' }
@@ -2504,7 +2807,7 @@ const App = {
     openModal('New Shared Goal', `
       <div class="field"><label>Goal Title</label><input id="m-goal-title" type="text" placeholder="e.g., Marriage Course"></div>
       <div class="field"><label>Description (optional)</label><input id="m-goal-desc" type="text" placeholder="Brief description"></div>
-      <div class="field"><label>Total Steps/Modules</label><input id="m-goal-steps" type="number" value="10" min="1"></div>
+      <div class="field"><label>Total Steps/Modules</label><input id="m-goal-steps" type="number" inputmode="numeric" value="10" min="1"></div>
     `, [
       { label: 'Cancel', cls: 'btn-secondary', fn: 'App.closeModal()' },
       { label: 'Create Goal', cls: 'btn-primary', fn: 'App.saveNewGoal()' }
@@ -2524,7 +2827,7 @@ const App = {
   
   updateGoalProgress(goalId, currentSteps) {
     openModal('Update Your Progress', `
-      <div class="field"><label>Steps Completed</label><input id="m-goal-progress" type="number" value="${currentSteps}" min="0"></div>
+      <div class="field"><label>Steps Completed</label><input id="m-goal-progress" type="number" inputmode="numeric" value="${currentSteps}" min="0"></div>
     `, [
       { label: 'Cancel', cls: 'btn-secondary', fn: 'App.closeModal()' },
       { label: 'Update', cls: 'btn-primary', fn: `App.saveGoalProgress('${goalId}')` }
@@ -2741,6 +3044,100 @@ const App = {
     toast('Link deleted');
   },
   
+  // ─── QUOTES ───────────────────────────────────────────
+  _quoteModalBody(q) {
+    var text = q ? Security.esc(q.text) : '';
+    var author = q ? Security.escapeAttr(q.author || '') : '';
+    var mode = q ? q.delivery_mode : 'random_once';
+    var time = q ? (q.delivery_time || '08:00') : '08:00';
+    var shared = q && q.is_shared ? 'checked' : '';
+    var active = (!q || q.is_active !== false) ? 'checked' : '';
+    var partnerName = S.partnerProfile ? Security.esc(S.partnerProfile.name) : 'partner';
+    function sel(v){ return mode === v ? ' selected' : ''; }
+    return '<div class="field"><label>Quote</label>'
+      + '<textarea id="m-q-text" class="note-textarea" placeholder="Type the quote or reminder..." oninput="autoDirInput(this)">' + text + '</textarea></div>'
+      + '<div class="field"><label>Author (optional)</label><input id="m-q-author" type="text" value="' + author + '" placeholder="e.g. Imam Ali (AS)"></div>'
+      + '<div class="field"><label>When to send</label><select id="m-q-mode" onchange="App._quoteModeChange()">'
+      + '<option value="random_once"' + sel('random_once') + '>🎲 Random — once, then stop</option>'
+      + '<option value="random_repeat"' + sel('random_repeat') + '>🎲 Random — keep resurfacing</option>'
+      + '<option value="daily_time"' + sel('daily_time') + '>🕐 Every day at a set time</option>'
+      + '<option value="scheduled_once"' + sel('scheduled_once') + '>📌 Once at a set time</option>'
+      + '</select></div>'
+      + '<div class="field" id="m-q-time-field" style="' + (mode === 'daily_time' || mode === 'scheduled_once' ? '' : 'display:none') + '"><label>Time</label><input id="m-q-time" type="time" value="' + time + '"></div>'
+      + '<div class="share-toggle"><label>💕 Also send to ' + partnerName + '</label>'
+      + '<label class="toggle"><input type="checkbox" id="m-q-share" ' + shared + '><span class="toggle-slider"></span></label></div>'
+      + '<div class="share-toggle"><label>Active</label>'
+      + '<label class="toggle"><input type="checkbox" id="m-q-active" ' + active + '><span class="toggle-slider"></span></label></div>';
+  },
+  
+  _quoteModeChange() {
+    var mode = el('m-q-mode').value;
+    var show = (mode === 'daily_time' || mode === 'scheduled_once');
+    el('m-q-time-field').style.display = show ? '' : 'none';
+  },
+  
+  addQuoteModal() {
+    openModal('Add Quote', this._quoteModalBody(null), [
+      { label: 'Cancel', cls: 'btn-secondary', fn: 'App.closeModal()' },
+      { label: 'Save', cls: 'btn-primary', fn: 'App.saveQuote()' }
+    ]);
+    setTimeout(function(){ var _qt=el('m-q-text');if(_qt)autoDirInput(_qt); }, 50);
+  },
+  
+  editQuoteModal(id) {
+    var q = S.quotes.find(function(x){ return x.id === id; });
+    if (!q) return;
+    openModal('Edit Quote', this._quoteModalBody(q), [
+      { label: 'Cancel', cls: 'btn-secondary', fn: 'App.closeModal()' },
+      { label: 'Delete', cls: 'btn-danger', fn: "App.deleteQuote('" + id + "')" },
+      { label: 'Save', cls: 'btn-primary', fn: "App.updateQuoteData('" + id + "')" }
+    ]);
+    setTimeout(function(){ var _qt=el('m-q-text');if(_qt)autoDirInput(_qt); }, 50);
+  },
+  
+  _readQuoteForm() {
+    var text = el('m-q-text').value.trim();
+    if (!text) { toast('Quote text required'); return null; }
+    var mode = el('m-q-mode').value;
+    var obj = {
+      text: text,
+      author: el('m-q-author').value.trim() || null,
+      delivery_mode: mode,
+      is_shared: el('m-q-share').checked,
+      is_active: el('m-q-active').checked
+    };
+    if (mode === 'daily_time' || mode === 'scheduled_once') obj.delivery_time = el('m-q-time').value;
+    else obj.delivery_time = null;
+    return obj;
+  },
+  
+  async saveQuote() {
+    var obj = this._readQuoteForm();
+    if (!obj) return;
+    await DB.addQuote(obj);
+    closeModal({});
+    await renderQuotesList();
+    toast('Quote added ✓');
+  },
+  
+  async updateQuoteData(id) {
+    var obj = this._readQuoteForm();
+    if (!obj) return;
+    await DB.updateQuote(id, obj);
+    closeModal({});
+    await renderQuotesList();
+    toast('Quote updated ✓');
+  },
+  
+  async deleteQuote(id) {
+    var ok = await App.confirm('Delete this quote?');
+    if (!ok) return;
+    await DB.deleteQuote(id);
+    closeModal({});
+    await renderQuotesList();
+    toast('Quote deleted');
+  },
+  
   // Habits Manager
   async addHabit(type) {
     const inputId = `new-${type}-name`;
@@ -2953,7 +3350,8 @@ document.addEventListener('visibilitychange', function() {
     // Day has changed — update state and re-render
     S.today = freshDate;
     S.viewDate = freshDate;
-    if (S.view === 'today') renderToday();
+    S._todayCache = null;
+    if (S.view === 'today') renderToday({ force: true });
   }
   // Always re-run notifications on foreground to restore lost timers
   if (Notification.permission === 'granted') {
@@ -2965,6 +3363,8 @@ document.addEventListener('visibilitychange', function() {
 const journalSave = debounce(async function(val) {
   if (S.viewDate && S.viewDate !== S.today) return;
   el('journal-save-status').textContent = 'Saving...';
+  if (S.checkin) S.checkin.journal = val;
+  if (S._todayCache && S._todayCache.checkin) S._todayCache.checkin.journal = val;
   await DB.upsertCheckin(S.viewDate || S.today, { journal: val });
   el('journal-save-status').textContent = 'Saved ✓';
   setTimeout(() => el('journal-save-status').textContent = '', 2000);
@@ -3104,13 +3504,19 @@ function renderNotifStatus() {
 
   // Overall
   var s = el('notif-status');
-  if (!s) return;
-  if (!('Notification' in window)) { s.innerHTML = bad('Not supported'); return; }
-  if (!pwaOk) { s.innerHTML = warn('Install to Home Screen first'); return; }
-  var perm = Notification.permission;
-  s.innerHTML = perm === 'granted' ? ok('All systems go')
-    : perm === 'denied' ? bad('Blocked in iPhone Settings')
-    : warn('Tap Enable below');
+  var menuBadge = el('notif-menu-status');
+  var overallTxt, overallSet;
+  if (!('Notification' in window)) { overallTxt = bad('Not supported'); overallSet = 'Off'; }
+  else if (!pwaOk) { overallTxt = warn('Install to Home Screen first'); overallSet = 'Setup'; }
+  else {
+    var perm = Notification.permission;
+    overallTxt = perm === 'granted' ? ok('All systems go')
+      : perm === 'denied' ? bad('Blocked in iPhone Settings')
+      : warn('Tap Enable below');
+    overallSet = perm === 'granted' ? 'On' : (perm === 'denied' ? 'Blocked' : 'Off');
+  }
+  if (s) s.innerHTML = overallTxt;
+  if (menuBadge) menuBadge.textContent = overallSet;
 }
 
 async function setupNotifications() {
