@@ -84,7 +84,13 @@ a{color:var(--primary-m);text-decoration:none}
 .pin-profile-indicator span{font-size:1.5rem;display:block;margin-bottom:4px}
 
 /* ─── APP SHELL ───────────────────────────────────────── */
-#app{display:flex;flex-direction:column;min-height:100vh}
+:root{--app-max:480px}
+#app{display:flex;flex-direction:column;min-height:100vh;max-width:var(--app-max);margin:0 auto;background:var(--bg);position:relative}
+/* On wider screens, frame the app like a phone and center it */
+@media(min-width:520px){
+  body{background:#E9E5DD}
+  #app{min-height:100dvh;box-shadow:0 0 0 1px var(--border-l), 0 12px 48px rgba(0,0,0,.12)}
+}
 .app-header{position:sticky;top:0;z-index:100;min-height:var(--header-h);background:var(--surface);border-bottom:1px solid var(--border-l);display:flex;align-items:center;padding:calc(8px + var(--sat)) 16px 8px;gap:12px}
 .app-header h1{font-family:var(--font-head);font-size:1.25rem;font-weight:600;flex:1}
 .app-header .hdr-sub{font-size:.75rem;color:var(--text-l);font-family:var(--font-body);font-weight:400}
@@ -124,7 +130,7 @@ section.view.active{display:block}
 .past-banner button{background:rgba(0,0,0,.08);border-radius:14px;padding:3px 12px;font-size:.72rem;font-weight:600;color:#7a5a10}
 
 /* ─── BOTTOM NAV ──────────────────────────────────────── */
-#bottom-nav{position:fixed;bottom:0;left:0;right:0;height:calc(var(--nav-h) + var(--sab));background:var(--surface);border-top:1px solid var(--border-l);display:flex;align-items:flex-start;z-index:100;padding:6px 0 var(--sab)}
+#bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:var(--app-max);height:calc(var(--nav-h) + var(--sab));background:var(--surface);border-top:1px solid var(--border-l);display:flex;align-items:flex-start;z-index:100;padding:6px 0 var(--sab)}
 .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:3px;cursor:pointer;-webkit-tap-highlight-color:transparent;color:var(--text-l);transition:color .15s;font-size:.62rem;font-weight:500;letter-spacing:.01em;padding-top:4px}
 .nav-item svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .nav-item.active{color:var(--primary)}
@@ -217,9 +223,6 @@ section.view.active{display:block}
 .ring-count{font-size:.75rem;color:var(--text-l)}
 
 /* ─── TRACKERS (Books, Quran) ───────────────────────────── */
-.tracker-tabs{display:flex;gap:8px;padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border-l)}
-.tracker-tab{padding:8px 16px;border-radius:20px;font-size:.82rem;font-weight:600;color:var(--text-m);background:var(--surface2);transition:all .15s}
-.tracker-tab.active{background:var(--primary);color:#fff}
 .book-card{padding:16px}
 .book-header{display:flex;gap:14px;align-items:flex-start}
 .book-spine{width:44px;height:60px;background:linear-gradient(135deg,var(--primary-l),var(--primary));border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:#fff;flex-shrink:0}
@@ -415,6 +418,9 @@ section.view.active{display:block}
 
 /* ─── FAB ─────────────────────────────────────────────── */
 .fab{position:fixed;right:18px;bottom:calc(var(--nav-h) + var(--sab) + 14px);width:52px;height:52px;border-radius:50%;background:var(--primary);color:#fff;font-size:1.6rem;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 16px rgba(27,67,50,.35);z-index:90;transition:transform .15s;-webkit-tap-highlight-color:transparent}
+@media(min-width:520px){
+  .fab{right:calc(50% - var(--app-max)/2 + 18px)}
+}
 .fab:active{transform:scale(.92)}
 .fab.hidden{display:none}
 
