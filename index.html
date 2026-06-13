@@ -308,6 +308,17 @@ section.view.active{display:block}
 .quote-actions{margin-left:auto;display:flex;gap:6px}
 .quote-fab-note{font-size:.72rem;color:var(--text-l);text-align:center;padding:10px 16px;line-height:1.5}
 
+/* ─── NUDGE PICKER ─────────────────────────────────────── */
+.nudge-moodline{font-size:.88rem;color:var(--text-m);text-align:center;margin-bottom:18px;line-height:1.5}
+.nudge-picker{display:flex;justify-content:center;flex-wrap:wrap;gap:10px;margin-bottom:16px}
+.nudge-emoji{width:58px;height:58px;border-radius:16px;background:var(--surface2);font-size:1.8rem;display:flex;align-items:center;justify-content:center;transition:transform .12s,background .12s;-webkit-tap-highlight-color:transparent}
+.nudge-emoji:active{transform:scale(.88);background:var(--border)}
+.nudge-hint{font-size:.75rem;color:var(--text-l);text-align:center;line-height:1.5}
+.nudge-banner{background:var(--partner-bg);border:1px solid var(--partner-border);color:var(--partner-color);margin:10px 14px 0;border-radius:var(--r);padding:12px 14px;display:flex;align-items:center;gap:12px;font-size:.88rem}
+.nudge-banner .nb-emoji{font-size:1.6rem}
+.nudge-banner .nb-text{flex:1;font-weight:500}
+.nudge-banner .nb-close{font-size:1.2rem;color:var(--partner-color);opacity:.6;padding:4px}
+
 /* ─── SHARED GOALS ─────────────────────────────────────── */
 .shared-goals-section{margin:12px 14px}
 .shared-goal-card{background:var(--surface);border-radius:var(--r);padding:16px;margin-bottom:12px;border:.5px solid var(--border-l)}
@@ -544,6 +555,8 @@ section.view.active{display:block}
         <span id="past-banner-text">Viewing a past day</span>
         <button onclick="App.goToday()">Back to today</button>
       </div>
+
+      <div id="nudge-banner-slot"></div>
 
       <div class="prayer-strip" id="prayer-strip">
         <div class="prayer-grid" id="prayer-grid" style="display:contents"></div>
@@ -1263,6 +1276,28 @@ const DB = {
     return sb.from('quotes').delete().eq('id', id).eq('profile_id', S.profileId);
   },
 
+  // Nudges (emoji sent between partners)
+  async sendNudge(emoji) {
+    if (!S.partnerProfile) return { error: 'no partner' };
+    return sb.from('nudges').insert({
+      from_profile_id: S.profileId,
+      to_profile_id: S.partnerProfile.id,
+      emoji: emoji
+    });
+  },
+  async getUnseenNudges() {
+    const { data } = await sb.from('nudges')
+      .select('*')
+      .eq('to_profile_id', S.profileId)
+      .eq('seen', false)
+      .order('created_at', { ascending: false });
+    return data || [];
+  },
+  async markNudgesSeen(ids) {
+    if (!ids || !ids.length) return;
+    return sb.from('nudges').update({ seen: true }).in('id', ids);
+  },
+
   // Shared Goals
   async getSharedGoals() {
     const { data } = await sb.from('shared_goals').select('*').eq('is_active', true).order('created_at');
@@ -1415,6 +1450,27 @@ async function loadStripDots() {
   } catch (e) {}
 }
 
+// Load unseen nudges from partner and show a banner on Today
+async function loadNudges() {
+  var slot = el('nudge-banner-slot');
+  if (!slot || !S.partnerProfile) return;
+  try {
+    var nudges = await DB.getUnseenNudges();
+    if (!nudges.length) { slot.innerHTML = ''; return; }
+    // Collapse multiple into one banner; show recent emojis
+    var emojis = nudges.map(function(n){ return n.emoji; });
+    var top = emojis.slice(0, 5).join(' ');
+    var who = S.partnerProfile.name;
+    var label = who + ' sent you ' + top + (nudges.length > 5 ? ' …' : '');
+    slot.innerHTML = '<div class="nudge-banner">'
+      + '<span class="nb-emoji">' + S.partnerProfile.emoji + '</span>'
+      + '<span class="nb-text">' + Security.esc(label) + '</span>'
+      + '<button class="nb-close" onclick="App.dismissNudges()" aria-label="Dismiss">×</button>'
+      + '</div>';
+    S._unseenNudgeIds = nudges.map(function(n){ return n.id; });
+  } catch (e) { slot.innerHTML = ''; }
+}
+
 function renderTodaySkeleton() {
   var sk = '<div class="skel" style="height:54px;margin:0"></div>';
   ['islamic-habits','regular-habits','bad-habits'].forEach(function(id){
@@ -1444,6 +1500,7 @@ async function renderToday(opts) {
 
   renderDateStrip();
   loadStripDots();
+  loadNudges();
 
   // ── STALE-WHILE-REVALIDATE: if we have a cache for this date, render instantly ──
   var haveCache = S._todayCache && S._todayCacheDate === viewDate;
@@ -2427,11 +2484,41 @@ const App = {
   showPartnerMood() {
     if (!S.partnerProfile) return;
     var labels = { 1: 'feeling down', 2: 'feeling meh', 3: 'feeling okay', 4: 'feeling good', 5: 'feeling great' };
-    if (S._partnerMoodVal) {
-      toast(S.partnerProfile.emoji + ' ' + S.partnerProfile.name + ' is ' + labels[S._partnerMoodVal]);
-    } else {
-      toast(S.partnerProfile.name + " hasn't checked in yet today");
+    var moodLine = S._partnerMoodVal
+      ? (S.partnerProfile.emoji + ' ' + S.partnerProfile.name + ' is ' + labels[S._partnerMoodVal] + ' today')
+      : (S.partnerProfile.name + " hasn't checked in yet today");
+    var emojis = ['❤️','👏','🔥','🤲','😄','🌙'];
+    var btns = emojis.map(function(e){
+      return '<button class="nudge-emoji" onclick="App.sendNudge(\'' + e + '\')">' + e + '</button>';
+    }).join('');
+    openModal('Send ' + Security.esc(S.partnerProfile.name) + ' a nudge',
+      '<div class="nudge-moodline">' + moodLine + '</div>'
+      + '<div class="nudge-picker">' + btns + '</div>'
+      + '<div class="nudge-hint">Tap an emoji — ' + Security.esc(S.partnerProfile.name) + ' gets a little notification 💛</div>',
+      [{ label: 'Close', cls: 'btn-secondary', fn: 'App.closeModal()' }]
+    );
+  },
+
+  async sendNudge(emoji) {
+    closeModal({});
+    try {
+      var res = await DB.sendNudge(emoji);
+      if (res && res.error) { toast('Could not send nudge'); return; }
+      toast('Sent ' + emoji + ' to ' + S.partnerProfile.name);
+    } catch (e) {
+      toast('Could not send nudge');
     }
+  },
+
+  async dismissNudges() {
+    var slot = el('nudge-banner-slot');
+    if (slot) slot.innerHTML = '';
+    try {
+      if (S._unseenNudgeIds && S._unseenNudgeIds.length) {
+        await DB.markNudgesSeen(S._unseenNudgeIds);
+        S._unseenNudgeIds = [];
+      }
+    } catch (e) {}
   },
   
   // Settings sub-pages
